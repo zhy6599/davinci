@@ -1,10 +1,10 @@
-import * as React from 'react'
-import * as classnames from 'classnames'
+import React from 'react'
+import classnames from 'classnames'
 import Yaxis from './Yaxis'
 import { IDrawingData, IMetricAxisConfig } from './Pivot'
 import { IWidgetMetric, DimetionType, IChartStyles } from '../Widget'
 import { spanSize, getPivotCellWidth, getPivotCellHeight, getAxisData, decodeMetricName, getAggregatorLocale, getPivot, getStyleConfig } from '../util'
-import { PIVOT_LINE_HEIGHT, DEFAULT_SPLITER } from '../../../../globalConstants'
+import { PIVOT_LINE_HEIGHT, DEFAULT_SPLITER } from 'app/globalConstants'
 
 const styles = require('./Pivot.less')
 

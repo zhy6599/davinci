@@ -19,19 +19,33 @@
 
 package edp;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@EnableAutoConfiguration(exclude = {org.springframework.boot.autoconfigure.gson.GsonAutoConfiguration.class})
+@EnableAutoConfiguration(
+        exclude = {
+                org.springframework.boot.autoconfigure.gson.GsonAutoConfiguration.class,
+                org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class
+        })
 @EnableScheduling
 public class DavinciServerApplication {
 
     public static void main(String[] args) {
+        System.setProperty("mail.mime.splitlongparameters", "false");
         SpringApplication.run(DavinciServerApplication.class, args);
     }
 
+    @Value("${jwtToken.secret:Pa@ss@Word}")
+    private String tokenSecret;
+
+    @Bean
+    public String TOKEN_SECRET() {
+        return tokenSecret;
+    }
 }
 

@@ -3,10 +3,15 @@ import classnames from 'classnames'
 import Pivot from '../Pivot'
 import Chart from '../Chart'
 import { Icon } from 'antd'
-import { AggregatorType, DragType, IDataParamConfig } from '../Workbench/Dropbox'
+import {
+  AggregatorType,
+  DragType,
+  IDataParamConfig
+} from '../Workbench/Dropbox'
 import { IDataParamProperty } from '../Workbench/OperatingPanel'
-import { IFieldFormatConfig } from '../Workbench/FormatConfigModal'
-import { IFieldConfig } from '../Workbench/FieldConfig'
+import { IFieldFormatConfig } from '../Config/Format'
+import { IFieldConfig } from '../Config/Field'
+import { IFieldSortConfig } from '../Config/Sort'
 import { IAxisConfig } from '../Workbench/ConfigSections/AxisSection'
 import { ISplitLineConfig } from '../Workbench/ConfigSections/SplitLineSection'
 import { IPivotConfig } from '../Workbench/ConfigSections/PivotSection'
@@ -17,24 +22,36 @@ import { IVisualMapConfig } from '../Workbench/ConfigSections/VisualMapSection'
 import { IToolboxConfig } from '../Workbench/ConfigSections/ToolboxSection'
 import { IAreaSelectConfig } from '../Workbench/ConfigSections/AreaSelectSection'
 import { IScorecardConfig } from '../Workbench/ConfigSections/ScorecardSection'
+import { IGaugeConfig } from '../Workbench/ConfigSections/GaugeSection'
 import { IframeConfig } from '../Workbench/ConfigSections/IframeSection'
-import { ITableConfig } from '../Workbench/ConfigSections/TableSection'
-import { IRichTextConfig, IBarConfig } from '../Workbench/ConfigSections'
+import { ITableConfig } from '../Config/Table'
+import { IRichTextConfig, IBarConfig, IRadarConfig } from '../Workbench/ConfigSections'
 import { IDoubleYAxisConfig } from '../Workbench/ConfigSections/DoubleYAxisSection'
-import { IModel } from '../Workbench/index'
-import { IQueryVariableMap } from '../../../Dashboard/Grid'
-import { getStyleConfig } from '../util'
-import ChartTypes from '../../config/chart/ChartTypes'
+import { IViewModel } from 'containers/View/types'
+import { IQueryVariableMap } from 'containers/Dashboard/types'
+import { IControl } from 'app/components/Control/types'
+import { RichTextNode } from 'app/components/RichText'
+import { IReference } from '../Workbench/Reference/types'
+import { ControlQueryMode } from 'app/components/Control/constants'
 const styles = require('../Pivot/Pivot.less')
 
 export type DimetionType = 'row' | 'col'
-export type RenderType = 'rerender' | 'clear' | 'refresh' | 'resize' | 'loading' | 'select'
+export type RenderType =
+  | 'rerender'
+  | 'clear'
+  | 'refresh'
+  | 'resize'
+  | 'loading'
+  | 'select'
+  | 'flush'
 export type WidgetMode = 'pivot' | 'chart'
+export type Coordinate = 'cartesian' | 'polar' | 'other'
 
 export interface IWidgetDimension {
   name: string
   field: IFieldConfig
   format: IFieldFormatConfig
+  sort: IFieldSortConfig
 }
 
 export interface IWidgetMetric {
@@ -43,6 +60,7 @@ export interface IWidgetMetric {
   chart: IChartInfo
   field: IFieldConfig
   format: IFieldFormatConfig
+  sort?: IFieldSortConfig
 }
 
 export interface IWidgetSecondaryMetric {
@@ -50,6 +68,7 @@ export interface IWidgetSecondaryMetric {
   agg: AggregatorType
   field: IFieldConfig
   format: IFieldFormatConfig
+  sort?: IFieldSortConfig
   from?: string
   type?: any
   visualType?: any
@@ -74,11 +93,18 @@ export interface IChartStyles {
   spec?: ISpecConfig
   visualMap?: IVisualMapConfig
   scorecard?: IScorecardConfig
+  gauge?: IGaugeConfig
   iframe?: IframeConfig
   table?: ITableConfig
   richText?: IRichTextConfig
   bar?: IBarConfig
+  radar?: IRadarConfig
   doubleYAxis?: IDoubleYAxisConfig
+}
+
+export interface IChartRule {
+  dimension: number | [number, number]
+  metric: number | [number, number]
 }
 
 export interface IChartInfo {
@@ -86,11 +112,10 @@ export interface IChartInfo {
   name: string
   title: string
   icon: string
-  coordinate: 'cartesian' | 'polar' | 'other'
-  requireDimetions: number | number[],
-  requireMetrics: number | number[],
+  coordinate: Coordinate
+  rules: IChartRule[]
   dimetionAxis?: DimetionType
-  data: object,
+  data: object
   style: object
 }
 
@@ -101,7 +126,7 @@ export interface IPaginationParams {
   withPaging: boolean
 }
 
-export interface IWidgetProps {
+interface IWidgetConfigBase {
   data: object[]
   cols: IWidgetDimension[]
   rows: IWidgetDimension[]
@@ -110,7 +135,6 @@ export interface IWidgetProps {
   filters: IWidgetFilter[]
   chartStyles: IChartStyles
   selectedChart: number
-  interacting?: boolean
   color?: IDataParamProperty
   label?: IDataParamProperty
   size?: IDataParamProperty
@@ -119,30 +143,38 @@ export interface IWidgetProps {
   yAxis?: IDataParamProperty
   dimetionAxis?: DimetionType
   renderType?: RenderType
-  orders: Array<{column: string, direction: string}>
+  orders: Array<{ column: string, direction: string }>
   mode: WidgetMode
-  model: IModel
+  model: IViewModel
   pagination?: IPaginationParams
   editing?: boolean
   queryVariables?: IQueryVariableMap
+  references?: IReference[]
+  computed?: any[]
+}
+
+export interface IWidgetProps extends IWidgetConfigBase {
+  interacting?: boolean
   onCheckTableInteract?: () => boolean
   onDoInteract?: (triggerData: object) => void
   getDataDrillDetail?: (position: string) => void
-  onPaginationChange?: (pageNo: number, pageSize: number) => void
-  onChartStylesChange?: (propPath: string[], value: string) => void
+  onPaginationChange?: (pageNo: number, pageSize: number, order?: { column: string, direction: string }) => void
+  onChartStylesChange?: (propPath: string[], value: string | RichTextNode[]) => void
   isDrilling?: boolean
-  whichDataDrillBrushed?: boolean | object []
-  computed?: any[]
+  whichDataDrillBrushed?: boolean | object[]
   selectedItems?: number[]
   onSelectChartsItems?: (selectedItems: number[]) => void
   // onHideDrillPanel?: (swtich: boolean) => void
+  onError?: (error: Error) => void
 }
 
-export interface IWidgetConfig extends IWidgetProps {
-  controls: any[]
+export interface IWidgetConfig extends IWidgetConfigBase {
+  controls: IControl[]
+  limit: number
   cache: boolean
   expired: number
   autoLoadData: boolean
+  queryMode: ControlQueryMode
 }
 
 export interface IWidgetWrapperProps extends IWidgetProps {
@@ -155,8 +187,10 @@ export interface IWidgetWrapperStates {
   height: number
 }
 
-export class Widget extends React.Component<IWidgetWrapperProps, IWidgetWrapperStates> {
-
+export class Widget extends React.Component<
+  IWidgetWrapperProps,
+  IWidgetWrapperStates
+> {
   public static defaultProps = {
     editing: false
   }
@@ -170,21 +204,27 @@ export class Widget extends React.Component<IWidgetWrapperProps, IWidgetWrapperS
   }
 
   private container = createRef<HTMLDivElement>()
+  private remeasureRenderTypes = ['rerender', 'clear', 'refresh', 'resize', 'flush']
 
   public componentDidMount () {
     this.getContainerSize()
   }
 
   public componentWillReceiveProps (nextProps: IWidgetProps) {
-    if (nextProps.renderType === 'resize') {
+    if (this.remeasureRenderTypes.includes(nextProps.renderType)) {
       this.getContainerSize()
     }
   }
 
   private getContainerSize = () => {
-    const { offsetWidth, offsetHeight } = this.container.current as HTMLDivElement
+    const { offsetWidth, offsetHeight } = this.container
+      .current as HTMLDivElement
     const { width, height } = this.state
-    if (offsetWidth && offsetHeight && (offsetWidth !== width ||  offsetHeight !== height)) {
+    if (
+      offsetWidth &&
+      offsetHeight &&
+      (offsetWidth !== width || offsetHeight !== height)
+    ) {
       this.setState({
         width: offsetWidth,
         height: offsetHeight
@@ -193,19 +233,20 @@ export class Widget extends React.Component<IWidgetWrapperProps, IWidgetWrapperS
   }
 
   public render () {
-    const { loading, empty } = this.props
+    const { loading, empty, ...rest } = this.props
     const { width, height } = this.state
 
-    const widgetProps = { width, height, ...this.props }
-
-    delete widgetProps.loading
+    const widgetProps = { width, height, ...rest }
 
     let widgetContent: JSX.Element
     if (width && height) {
       // FIXME
-      widgetContent =  widgetProps.mode === 'chart'
-        ? (<Chart {...widgetProps} />)
-        : (<Pivot {...widgetProps} />)
+      widgetContent =
+        widgetProps.mode === 'chart' ? (
+          <Chart {...widgetProps} />
+        ) : (
+          <Pivot {...widgetProps} />
+        )
     }
 
     return (

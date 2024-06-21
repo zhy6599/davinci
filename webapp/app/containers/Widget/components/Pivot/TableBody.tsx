@@ -4,7 +4,7 @@ import { IDrawingData, IMetricAxisConfig, ILegend } from './Pivot'
 import { IWidgetMetric, DimetionType, RenderType, IChartStyles } from '../Widget'
 import Cell from './Cell'
 import Chart, { IChartUnit, IChartLine, IChartBlock } from './Chart'
-import { PIVOT_CANVAS_SIZE_LIMIT, PIVOT_CANVAS_POLAR_SIZE_LIMIT } from '../../../../globalConstants'
+import { PIVOT_CANVAS_SIZE_LIMIT, PIVOT_CANVAS_POLAR_SIZE_LIMIT } from 'app/globalConstants'
 import {
   getPivotContentTextWidth,
   getPivotCellWidth,
@@ -12,7 +12,7 @@ import {
   getChartPieces,
   decodeMetricName
 } from '../util'
-import { uuid } from '../../../../utils/util'
+import { uuid } from 'utils/util'
 import { IDataParamProperty } from '../Workbench/OperatingPanel'
 
 const styles = require('./Pivot.less')
@@ -503,7 +503,6 @@ export class TableBody extends React.Component<ITableBodyProps, ITableBodyState>
           isDrilling={isDrilling}
           selectedChart={this.props.selectedChart}
           whichDataDrillBrushed={this.props.whichDataDrillBrushed}
-          // onHideDrillPanel={onHideDrillPanel}
           selectedItems={this.props.selectedItems}
           onSelectChartsItems={this.props.onSelectChartsItems}
         />

@@ -19,7 +19,7 @@
 
 package edp.davinci.model;
 
-import edp.davinci.common.model.RecordInfo;
+import edp.core.model.RecordInfo;
 import lombok.Data;
 
 @Data
@@ -37,5 +37,6 @@ public class RelRoleView extends RecordInfo<RelRoleView> {
     }
 
     public RelRoleView() {
+
     }
 }

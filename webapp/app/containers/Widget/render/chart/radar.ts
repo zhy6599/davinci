@@ -19,12 +19,14 @@
  */
 
 import { IChartProps } from '../../components/Chart'
+import { EChartOption } from 'echarts'
 import {
   decodeMetricName,
-  getChartTooltipLabel,
   getSizeValue,
   getSizeRate
 } from '../../components/util'
+import { getFieldAlias } from '../../components/Config/Field'
+import { getFormattedValue } from '../../components/Config/Format'
 import {
   getMetricAxisOption,
   getLabelOption,
@@ -44,92 +46,131 @@ export default function (chartProps: IChartProps) {
     tip
   } = chartProps
 
-  const {
-    label,
-    legend,
-    spec,
-    toolbox
-  } = chartStyles
+  const { label, legend, radar, toolbox } = chartStyles
 
-  const {
-    legendPosition,
-    fontSize
-  } = legend
-
-  const { shape } = spec
+  const { legendPosition, fontSize } = legend
 
   const labelOption = {
-    label: getLabelOption('radar', label)
+    label: getLabelOption('radar', label, metrics)
   }
 
   let dimensions = []
   if (cols.length) {
     dimensions = dimensions.concat(cols)
   }
-  if (color.items.length) {
-    dimensions = dimensions.concat(color.items.map((c) => c.name))
-  }
-  const dimension = dimensions[0]
 
   const metricsNames = metrics.map((m) => decodeMetricName(m.name))
-  const legendData = metricsNames
-  const indicatorData = {}
+
+  let seriesData
+  let indicator
   let indicatorMax = -Infinity
-  const dimensionData = metricsNames.reduce((acc, name) => ({
-    ...acc,
-    [name]: {}
-  }), {})
-  data.forEach((row) => {
-    if (!indicatorData[row[dimension.name]]) {
-      indicatorData[row[dimension.name]] = -Infinity
+  let legendData
+
+  if (!dimensions.length) {
+    if (color.items.length) {
+      dimensions = dimensions.concat(color.items.map((c) => c.name))
     }
-
-    metrics.forEach((m) => {
-      const name = decodeMetricName(m.name)
-      const cellVal = row[`${m.agg}(${name})`]
-      indicatorMax = Math.max(indicatorMax, cellVal)
-      if (!dimensionData[name][row[dimension.name]]) {
-        dimensionData[name][row[dimension.name]] = 0
+    const metricsData = !data.length
+      ? []
+      : metrics.map((m) => data[0][`${m.agg}(${decodeMetricName(m.name)})`])
+    seriesData = !data.length ? [] : [{ value: metricsData }]
+    indicatorMax = Math.max(...metricsData)
+    indicatorMax = indicatorMax + Math.round(indicatorMax * 0.1)
+    indicator = metrics.map((m) => ({
+      name: decodeMetricName(m.name),
+      max: indicatorMax
+    }))
+  } else {
+    legendData = metricsNames
+    const dimension = dimensions[0]
+    const indicatorData = {}
+    const dimensionData = metricsNames.reduce(
+      (acc, name) => ({
+        ...acc,
+        [name]: {}
+      }),
+      {}
+    )
+    data.forEach((row) => {
+      if (!indicatorData[row[dimension.name]]) {
+        indicatorData[row[dimension.name]] = -Infinity
       }
-      dimensionData[name][row[dimension.name]] += cellVal
+
+      metrics.forEach((m) => {
+        const name = decodeMetricName(m.name)
+        const cellVal = row[`${m.agg}(${name})`]
+        indicatorMax = Math.max(indicatorMax, cellVal)
+        if (!dimensionData[name][row[dimension.name]]) {
+          dimensionData[name][row[dimension.name]] = 0
+        }
+        dimensionData[name][row[dimension.name]] += cellVal
+      })
     })
-  })
-  const indicator = Object.keys(indicatorData).map((name: string) => ({
-    name,
-    max: indicatorMax + Math.round(indicatorMax * 0.1)
-  }))
-  const seriesData = data.length > 0 ? Object.entries(dimensionData).map(([name, value]) => ({
-    name,
-    value: Object.values(value)
-  })) : []
+    indicator = Object.keys(indicatorData).map((name: string) => ({
+      name,
+      max: indicatorMax + Math.round(indicatorMax * 0.1)
+    }))
+    seriesData =
+      data.length > 0
+        ? Object.entries(dimensionData).map(([name, value]) => ({
+            name,
+            value: Object.values(value)
+          }))
+        : []
+  }
 
-  const {
-    showLabel,
-    labelColor,
-    labelFontFamily,
-    labelFontSize
-  } = label
+  const tooltip: EChartOption.Tooltip = {
+    formatter(params: EChartOption.Tooltip.Format) {
+      const { dataIndex, data, color } = params
 
-  const radarName = {
-    show: showLabel,
-    color: labelColor,
-    fontFamily: labelFontFamily,
-    fontSize: labelFontSize
+      let tooltipLabels = []
+      if (dimensions.length) {
+        const metric = metrics[dataIndex]
+        tooltipLabels.push(
+          getFieldAlias(metric.field, {}) || decodeMetricName(metric.name)
+        )
+        tooltipLabels = tooltipLabels.concat(
+          indicator.map(
+            ({ name }, idx) =>
+              `${name}: ${getFormattedValue(data.value[idx], metric.format)}`
+          )
+        )
+        if (color) {
+          tooltipLabels[0] =
+            `<span class="widget-tooltip-circle" style="background: ${color}"></span>` +
+            tooltipLabels[0]
+        }
+      } else {
+        tooltipLabels = tooltipLabels.concat(
+          indicator.map(
+            ({ name }, idx) =>
+              `${name}: ${getFormattedValue(
+                data.value[idx],
+                metrics[idx].format
+              )}`
+          )
+        )
+      }
+
+      return tooltipLabels.join('<br/>')
+    }
   }
 
   return {
-    tooltip : {},
-    legend: getLegendOption(legend, legendData),
+    tooltip,
+    legend: legendData && getLegendOption(legend, legendData),
     radar: {
       // type: 'log',
-      shape,
       indicator,
-      name: radarName
+      ...radar
     },
-    series: [{
-      name: '',
-      type: 'radar',
-      data: seriesData
-    }]
+    series: [
+      {
+        name: '',
+        type: 'radar',
+        data: seriesData,
+        ...labelOption
+      }
+    ]
   }
 }

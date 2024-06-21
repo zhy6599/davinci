@@ -2,8 +2,11 @@
  * COMMON WEBPACK CONFIGURATION
  */
 
+const os = require('os')
 const path = require('path')
 const webpack = require('webpack')
+const HappyPack = require('happypack')
+const happyThreadPool = HappyPack.ThreadPool({ size: os.cpus().length })
 const overrideLessVariables = require('../../app/assets/override/lessVariables')
 
 // Remove this line once the following warning goes away (it was meant for webpack loader authors not users):
@@ -28,15 +31,16 @@ module.exports = options => ({
     rules: [
       {
         test: /\.tsx?$/,
-        use: options.tsLoaders
+        exclude: /node_modules/,
+        use: 'happypack/loader?id=typescript'
       },
       {
         test: /\.js$/, // Transform all .js files required somewhere with Babel
-        exclude: /node_modules(?!\/quill-image-drop-module|quill-image-resize-module)/,
-        use: {
-          loader: 'babel-loader',
-          options: options.babelQuery
-        }
+        exclude: [
+          /\bcore-js\b/,
+          /\bwebpack\/buildin\b/
+        ],
+        use: 'happypack/loader?id=js',
       },
       {
         // Do not transform vendor's CSS with CSS-modules
@@ -46,33 +50,22 @@ module.exports = options => ({
         // So, no need for ExtractTextPlugin here.
         test: /\.css$/,
         include: /node_modules|libs/,
-        use: ['style-loader', 'css-loader']
+        use: 'happypack/loader?id=css'
       },
       {
         test: /\.css$/,
         include: [/app[\\\/]assets/],
-        use: ['style-loader', 'css-loader', 'postcss-loader']
+        use: 'happypack/loader?id=assets-css'
       },
       {
         test: /\.less$/,
         include: /node_modules/,
-        use: [
-          'style-loader',
-          'css-loader',
-          `less-loader?{"sourceMap": true, "modifyVars": ${JSON.stringify(
-            overrideLessVariables
-          )}}`
-        ]
+        use: 'happypack/loader?id=less'
       },
       {
         test: /\.less$/,
         exclude: /node_modules/,
-        use: [
-          'style-loader',
-          'css-loader?modules&importLoaders=1',
-          'postcss-loader',
-          'less-loader'
-        ]
+        use: 'happypack/loader?id=assets-less'
       },
       {
         test: /\.(eot|otf|ttf|woff|woff2)$/,
@@ -157,16 +150,79 @@ module.exports = options => ({
           request: '../../locale', // resolved relatively
       });
     }),
-    new webpack.ProvidePlugin({
-      'window.Quill': 'quill'
-    })
+    new HappyPack({
+      id: 'typescript',
+      loaders: options.tsLoaders,
+      threadPool: happyThreadPool,
+      verbose: true
+    }),
+    new HappyPack({
+      id: 'js',
+      loaders: ['babel-loader'],
+      threadPool: happyThreadPool,
+      verbose: true
+    }),
+    new HappyPack({
+      id: 'css',
+      loaders: ['style-loader', 'css-loader'],
+      threadPool: happyThreadPool,
+      verbose: true
+    }),
+    new HappyPack({
+      id: 'assets-css',
+      loaders: ['style-loader', 'css-loader', 'postcss-loader'],
+      threadPool: happyThreadPool,
+      verbose: true
+    }),
+    new HappyPack({
+      id: 'less',
+      loaders: [
+        'style-loader',
+        'css-loader',
+        {
+          loader: 'less-loader',
+          options: {
+            sourceMap: true,
+            javascriptEnabled: true,
+            modifyVars: overrideLessVariables
+          }
+        }
+      ],
+      threadPool: happyThreadPool,
+      verbose: true
+    }),
+    new HappyPack({
+      id: 'assets-less',
+      loaders: [
+        'style-loader',
+        {
+          loader: 'css-loader',
+          options: {
+            modules: true,
+            importLoaders: 1
+          }
+        },
+        'postcss-loader',
+        {
+          loader: 'less-loader',
+          options: {
+            sourceMap: true,
+            javascriptEnabled: true
+          }
+        }
+      ],
+      threadPool: happyThreadPool,
+      verbose: true
+    }),
   ]),
   resolve: {
     modules: ['node_modules', 'app'],
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.react.js'],
     mainFields: ['browser', 'jsnext:main', 'main'],
     alias: {
+      'react-resizable': path.resolve(process.cwd(), 'libs/react-resizable'),
       app: path.resolve(process.cwd(), 'app'),
+      share: path.resolve(process.cwd(), 'share'),
       libs: path.resolve(process.cwd(), 'libs'),
       assets: path.resolve(process.cwd(), 'app/assets')
       // fonts: path.resolve(process.cwd(), 'app/assets/fonts')

@@ -18,12 +18,12 @@
  * >>
  */
 
-import * as React from 'react'
+import React from 'react'
 
 import { Input } from 'antd'
 const Search = Input.Search
 
-const utilStyles = require('../../assets/less/util.less')
+const utilStyles = require('assets/less/util.less')
 
 interface ISearchFilterDropdownProps {
   placeholder: string

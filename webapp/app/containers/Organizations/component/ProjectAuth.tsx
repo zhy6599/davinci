@@ -18,8 +18,8 @@
  * >>
  */
 
-import * as React from 'react'
-import * as classnames from 'classnames'
+import React from 'react'
+import classnames from 'classnames'
 import { Icon, Button, Row, Col, Input, Select, Popconfirm, Table, Modal, Form, Radio } from 'antd'
 const FormItem = Form.Item
 const InputGroup = Input.Group
@@ -27,7 +27,7 @@ const RadioGroup = Radio.Group
 const Option = Select.Option
 const styles = require('../Project.less')
 import { uuid } from 'utils/util'
-const utilStyles =  require('../../../assets/less/util.less')
+const utilStyles =  require('assets/less/util.less')
 
 interface IAuthProps {
   vizs?: any

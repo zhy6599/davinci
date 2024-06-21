@@ -18,23 +18,24 @@
  * >>
  */
 
-import * as React from 'react'
+import React from 'react'
 import { compose } from 'redux'
 import { connect } from 'react-redux'
-import * as classnames from 'classnames'
+import classnames from 'classnames'
 import { Icon, Button, Row, Col, Input, Tooltip, Popconfirm, Table, Modal, Form } from 'antd'
 const FormItem = Form.Item
 const InputGroup = Input.Group
 import AdminForm from './Transfer'
 import AntdFormType from 'antd/lib/form/Form'
-import Avatar from '../../../components/Avatar/index'
 import Auth from './ProjectAuth'
 const styles = require('../Project.less')
-const utilStyles =  require('../../../assets/less/util.less')
+const utilStyles =  require('assets/less/util.less')
 import { createStructuredSelector } from 'reselect'
 import { makeSelectCurrentOrganizationProject, makeSelectCurrentOrganizationMembers, makeSelectCurrentOrganizationProjectAdmins } from '../selectors'
-import { addProjectAdmin, deleteProjectAdmin} from '../../Projects/actions'
-import { loadProjectAdmin } from '../actions'
+import { ProjectActions } from 'containers/Projects/actions'
+const { addProjectAdmin, deleteProjectAdmin } = ProjectActions
+import { OrganizationActions } from '../actions'
+const { loadProjectAdmin } = OrganizationActions
 
 interface IProjectAdminStates {
   relationRoleVisible: boolean
@@ -51,7 +52,7 @@ interface IProjectAdminProps {
   organizationMembers: any[]
   projectAdmins: any[]
   onLoadProjectAdmin: (projectId: number) => any
-  onAddProjectAdmin: (projectId: number, adminId: number, resolve?: (result: any) => any) => any
+  onAddProjectAdmin: (projectId: number, adminIds: number[], resolve?: (result: any) => any) => any
   onDeleteProjectAdmin: (projectId: number, adminId: number , resolve: () => any) => any
 }
 
@@ -82,7 +83,8 @@ export class ProjectAdmin extends React.PureComponent<IProjectAdminProps, IProje
   private onSaveAdmin = () => {
     const { adminTargetKeys } = this.state
     const { projectDetail: {id} } = this.props
-    this.props.onAddProjectAdmin(id, adminTargetKeys[0], (result) => {
+    const adminIds = adminTargetKeys.map((admin) => Number(admin))
+    this.props.onAddProjectAdmin(id, adminIds, (result) => {
         this.loadAdmins(id)
         this.toggleAdminForm()
         this.setState({ adminTargetKeys: []})
@@ -113,10 +115,10 @@ export class ProjectAdmin extends React.PureComponent<IProjectAdminProps, IProje
   }
 
   private deleteAdmin = (option) => () => {
-    const { onDeleteProjectAdmin } = this.props
+    const { projectDetail, onDeleteProjectAdmin } = this.props
     const {id, relationId} = option
     onDeleteProjectAdmin(id, relationId, () => {
-      this.loadAdmins()
+      this.loadAdmins(projectDetail.id)
       this.setState({ adminTargetKeys: []})
     })
   }
@@ -147,17 +149,32 @@ export class ProjectAdmin extends React.PureComponent<IProjectAdminProps, IProje
 
   private setRowKeys = (item) => item.user.id
   private setTransferOptionTitle = (item) => item.user.username
-  private transferFilterOption = (inputValue, option) => option.user.username.indexOf(inputValue) > -1
   private setAdminTargetKeys = (newTargetKeys) => {
     if (newTargetKeys) {
       this.setState({adminTargetKeys: newTargetKeys})
     }
   }
 
+  private isInArray <T> (source: T[], target: T) {
+     return source.some((s) => s === target)
+  }
 
   public render () {
     const { projectAdmins } = this.state
     const { organizationMembers, projectDetail: {id} } = this.props
+    let pAdmins = []
+    if (this.props.projectAdmins && this.props.projectAdmins.length) {
+       pAdmins = this.props.projectAdmins.map((admin) => admin && admin.user ? admin.user.id : void 0).filter((s) => s)
+    }
+
+    const notAdminMembers = organizationMembers.filter((member) => {
+        const orgMemberId = member && member.user && member.user.id
+        if (typeof orgMemberId === 'number') {
+          return !this.isInArray<number>(pAdmins, orgMemberId)
+        }
+    })
+
+
     const admins = projectAdmins && projectAdmins.length ? projectAdmins : []
     const addButton =  (
         <Tooltip placement="bottom" title="添加">
@@ -246,9 +263,8 @@ export class ProjectAdmin extends React.PureComponent<IProjectAdminProps, IProje
             >
                 <AdminForm
                     wrappedComponentRef={this.refHandlers.AdminForm}
-                    dataSource={organizationMembers}
+                    dataSource={notAdminMembers}
                     optionTitle={this.setTransferOptionTitle}
-                    filterOption={this.transferFilterOption}
                     adminTargetKeys={this.state.adminTargetKeys}
                     targetKeys={this.state.adminTargetKeys}
                     setTargetKeys={this.setAdminTargetKeys}
@@ -270,7 +286,7 @@ const mapStateToProps = createStructuredSelector({
 export function mapDispatchToProps (dispatch) {
     return {
         onLoadProjectAdmin: (projectId) => dispatch(loadProjectAdmin(projectId)),
-        onAddProjectAdmin: (projectId, adminId, resolve) => dispatch(addProjectAdmin(projectId, adminId, resolve)),
+        onAddProjectAdmin: (projectId, adminIds, resolve) => dispatch(addProjectAdmin(projectId, adminIds, resolve)),
         onDeleteProjectAdmin: (projectId, relationId , resolve) => dispatch(deleteProjectAdmin (projectId, relationId , resolve))
     }
 }

@@ -18,7 +18,7 @@
  * >>
  */
 
-import * as React from 'react'
+import React from 'react'
 import { FormComponentProps } from 'antd/lib/form'
 import { Form, Input, Select, Button, Row, Col, Menu, Tabs } from 'antd'
 const FormItem = Form.Item
@@ -26,12 +26,12 @@ const Option = Select.Option
 const Search = Input.Search
 const TabPane = Tabs.TabPane
 
-import { uuid } from '../../../utils/util'
+import { uuid } from 'utils/util'
 const codeMirror = require('codemirror/lib/codemirror')
-const utilStyles = require('../../../assets/less/util.less')
-import sqlFunctions from '../../../assets/sqlFunctionName/sqlFns'
+const utilStyles = require('assets/less/util.less')
+import sqlFunctions from 'assets/sqlFunctionName/sqlFns'
 import 'codemirror/lib/codemirror.css'
-import '../../../assets/override/codemirror_theme.css'
+import 'assets/override/codemirror_theme.css'
 require('codemirror/mode/javascript/javascript')
 import 'codemirror/addon/lint/lint.css'
 require('codemirror/addon/hint/javascript-hint')
@@ -394,7 +394,7 @@ export class ComputedConfigForm extends React.Component<IComputedConfigFormProps
       </Menu>
     )
     return (
-      <div className={styles.variableConfigForm}>
+      <div className={styles.computedConfigForm}>
         <div className={styles.body}>
           <div className={styles.fields}>
             <div className={styles.fieldName}>

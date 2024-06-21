@@ -20,7 +20,8 @@
 
 import ChartTypes from './ChartTypes'
 
-import { IChartInfo } from '../../../../containers/Widget/components/Widget'
+import { IChartInfo } from 'containers/Widget/components/Widget'
+import { getDefaultContent } from 'components/RichText'
 
 const richText: IChartInfo = {
   id: ChartTypes.RichText,
@@ -28,8 +29,7 @@ const richText: IChartInfo = {
   title: '富文本',
   icon: 'icon-text',
   coordinate: 'other',
-  requireDimetions: [0, 9999],
-  requireMetrics: [0, 9999],
+  rules: [{ dimension: [0, 9999], metric: [0, 9999] }],
   data: {
     cols: {
       title: '列',
@@ -50,7 +50,7 @@ const richText: IChartInfo = {
   },
   style: {
     richText: {
-      content: ''
+      content: getDefaultContent()
     },
     spec: {}
   }

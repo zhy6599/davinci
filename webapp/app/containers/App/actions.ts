@@ -19,13 +19,16 @@
  */
 
 import {
+  GET_EXTERNAL_AUTH_PROVIDERS,
+  GET_EXTERNAL_AUTH_PROVIDERS_SUCESS,
+  TRY_EXTERNAL_AUTH,
+  GET_SERVER_CONFIGURATIONS,
+  GET_SERVER_CONFIGURATIONS_SUCCESS,
+  GET_SERVER_CONFIGURATIONS_FAIL,
   LOGIN,
   LOGGED,
   LOGIN_ERROR,
   LOGOUT,
-  SET_LOGIN_USER,
-  GET_LOGIN_USER,
-  GET_LOGIN_USER_ERROR,
   SHOW_NAVIGATOR,
   HIDE_NAVIGATOR,
   CHECK_NAME,
@@ -48,23 +51,50 @@ import {
   DOWNLOAD_FILE,
   DOWNLOAD_FILE_FAILURE,
   DOWNLOAD_FILE_SUCCESS,
-  CHANGE_DOWNLOAD_STATUS,
-  CHANGE_DOWNLOAD_STATUS_SUCCESS,
-  CHANGE_DOWNLOAD_STATUS_FAILURE,
-  INITIATE_DOWNLOAD_TASK,
-  INITIATE_DOWNLOAD_TASK_SUCCESS,
-  INITIATE_DOWNLOAD_TASK_FAILURE
+  GET_CAPTCHA_FOR_RESET_PASSWORD,
+  GET_CAPTCHA_FOR_RESET_PASSWORD_SUCCESS,
+  GET_CAPTCHA_FOR_RESET_PASSWORD_ERROE,
+  RESET_PASSWORD_UNLOGGED,
+  RESET_PASSWORD_UNLOGGED_ERROR,
+  RESET_PASSWORD_UNLOGGED_SUCCESS,
+  GET_USER_BY_TOKEN,
+  GET_USER_BY_TOKEN_SUCCESS,
+  GET_USER_BY_TOKEN_FAIL
 } from './constants'
 
-import { promiseActionCreator } from '../../utils/reduxPromisation'
+import {
+  IGetgetCaptchaParams,
+  IResetPasswordParams
+} from '../FindPassword/types'
 
+import { IReduxActionStruct } from 'utils/types'
+import { IServerConfigurations } from './types'
 
+export function getExternalAuthProviders() {
+  return {
+    type: GET_EXTERNAL_AUTH_PROVIDERS
+  }
+}
 
-export const logout = promiseActionCreator(LOGOUT)
+export function gotExternalAuthProviders(externalAuthProviders) {
+  return {
+    type: GET_EXTERNAL_AUTH_PROVIDERS_SUCESS,
+    payload: {
+      externalAuthProviders
+    }
+  }
+}
 
-export const setLoginUser = promiseActionCreator(SET_LOGIN_USER, ['user'])
+export function tryExternalAuth(resolve) {
+  return {
+    type: TRY_EXTERNAL_AUTH,
+    payload: {
+      resolve
+    }
+  }
+}
 
-export function login (username, password, resolve) {
+export function login(username, password, resolve) {
   return {
     type: LOGIN,
     payload: {
@@ -75,7 +105,33 @@ export function login (username, password, resolve) {
   }
 }
 
-export function logged (user) {
+export function getServerConfigurations() {
+  return {
+    type: GET_SERVER_CONFIGURATIONS
+  }
+}
+
+export function serverConfigurationsGetted(
+  configurations: IServerConfigurations
+) {
+  return {
+    type: GET_SERVER_CONFIGURATIONS_SUCCESS,
+    payload: {
+      configurations
+    }
+  }
+}
+
+export function getServerConfigurationsFail(error) {
+  return {
+    type: GET_SERVER_CONFIGURATIONS_FAIL,
+    payload: {
+      error
+    }
+  }
+}
+
+export function logged(user) {
   return {
     type: LOGGED,
     payload: {
@@ -84,13 +140,19 @@ export function logged (user) {
   }
 }
 
-export function loginError () {
+export function loginError() {
   return {
     type: LOGIN_ERROR
   }
 }
 
-export function active (token, resolve) {
+export function logout() {
+  return {
+    type: LOGOUT
+  }
+}
+
+export function active(token, resolve) {
   return {
     type: ACTIVE,
     payload: {
@@ -100,7 +162,7 @@ export function active (token, resolve) {
   }
 }
 
-export function activeSuccess (user) {
+export function activeSuccess(user) {
   return {
     type: ACTIVE_SUCCESS,
     payload: {
@@ -109,13 +171,13 @@ export function activeSuccess (user) {
   }
 }
 
-export function activeError () {
+export function activeError() {
   return {
     type: ACTIVE_ERROR
   }
 }
 
-export function joinOrganization (token, resolve, reject) {
+export function joinOrganization(token, resolve, reject) {
   return {
     type: JOIN_ORGANIZATION,
     payload: {
@@ -126,7 +188,7 @@ export function joinOrganization (token, resolve, reject) {
   }
 }
 
-export function joinOrganizationSuccess (user) {
+export function joinOrganizationSuccess(user) {
   return {
     type: JOIN_ORGANIZATION_SUCCESS,
     payload: {
@@ -135,40 +197,25 @@ export function joinOrganizationSuccess (user) {
   }
 }
 
-export function joinOrganizationError () {
+export function joinOrganizationError() {
   return {
     type: JOIN_ORGANIZATION_ERROR
   }
 }
 
-export function getLoginUser (resolve) {
-  return {
-    type: GET_LOGIN_USER,
-    payload: {
-      resolve
-    }
-  }
-}
-
-export function getLoginUserError () {
-  return {
-    type: GET_LOGIN_USER_ERROR
-  }
-}
-
-export function showNavigator () {
+export function showNavigator() {
   return {
     type: SHOW_NAVIGATOR
   }
 }
 
-export function hideNavigator () {
+export function hideNavigator() {
   return {
     type: HIDE_NAVIGATOR
   }
 }
 
-export function checkNameAction (id, name, type, params, resolve, reject) {
+export function checkNameAction(id, name, type, params, resolve, reject) {
   return {
     type: CHECK_NAME,
     payload: {
@@ -182,7 +229,7 @@ export function checkNameAction (id, name, type, params, resolve, reject) {
   }
 }
 
-export function checkNameUniqueAction (pathname, data, resolve, reject) {
+export function checkNameUniqueAction(pathname, data, resolve, reject) {
   return {
     type: CHECK_NAME,
     payload: {
@@ -194,7 +241,7 @@ export function checkNameUniqueAction (pathname, data, resolve, reject) {
   }
 }
 
-export function updateProfile (id, name, description, department, resolve) {
+export function updateProfile(id, name, description, department, resolve) {
   return {
     type: UPDATE_PROFILE,
     payload: {
@@ -207,7 +254,7 @@ export function updateProfile (id, name, description, department, resolve) {
   }
 }
 
-export function uploadAvatarSuccess (path) {
+export function uploadAvatarSuccess(path) {
   return {
     type: UPLOAD_AVATAR_SUCCESS,
     payload: {
@@ -216,7 +263,7 @@ export function uploadAvatarSuccess (path) {
   }
 }
 
-export function updateProfileSuccess (user) {
+export function updateProfileSuccess(user) {
   return {
     type: UPDATE_PROFILE_SUCCESS,
     payload: {
@@ -225,14 +272,13 @@ export function updateProfileSuccess (user) {
   }
 }
 
-export function updateProfileError () {
+export function updateProfileError() {
   return {
     type: UPDATE_PROFILE_ERROR
   }
 }
 
-
-export function changeUserPassword (user, resolve, reject) {
+export function changeUserPassword(user, resolve, reject) {
   return {
     type: CHANGE_USER_PASSWORD,
     payload: {
@@ -243,7 +289,7 @@ export function changeUserPassword (user, resolve, reject) {
   }
 }
 
-export function userPasswordChanged (result) {
+export function userPasswordChanged(result) {
   return {
     type: CHANGE_USER_PASSWORD_SUCCESS,
     payload: {
@@ -252,19 +298,19 @@ export function userPasswordChanged (result) {
   }
 }
 
-export function changeUserPasswordFail () {
+export function changeUserPasswordFail() {
   return {
     type: CHANGE_USER_PASSWORD_FAILURE
   }
 }
 
-export function loadDownloadList () {
+export function loadDownloadList() {
   return {
     type: LOAD_DOWNLOAD_LIST
   }
 }
 
-export function downloadListLoaded (list) {
+export function downloadListLoaded(list) {
   return {
     type: LOAD_DOWNLOAD_LIST_SUCCESS,
     payload: {
@@ -273,7 +319,7 @@ export function downloadListLoaded (list) {
   }
 }
 
-export function loadDownloadListFail (error) {
+export function loadDownloadListFail(error) {
   return {
     type: LOAD_DOWNLOAD_LIST_FAILURE,
     payload: {
@@ -282,7 +328,7 @@ export function loadDownloadListFail (error) {
   }
 }
 
-export function downloadFile (id) {
+export function downloadFile(id) {
   return {
     type: DOWNLOAD_FILE,
     payload: {
@@ -291,13 +337,16 @@ export function downloadFile (id) {
   }
 }
 
-export function fileDownloaded () {
+export function fileDownloaded(id) {
   return {
-    type: DOWNLOAD_FILE_SUCCESS
+    type: DOWNLOAD_FILE_SUCCESS,
+    payload: {
+      id
+    }
   }
 }
 
-export function downloadFileFail (error) {
+export function downloadFileFail(error) {
   return {
     type: DOWNLOAD_FILE_FAILURE,
     payload: {
@@ -306,58 +355,81 @@ export function downloadFileFail (error) {
   }
 }
 
-export function changeDownloadStatus (id) {
+export function getCaptchaforResetPassword(
+  params: IGetgetCaptchaParams
+): IReduxActionStruct<IGetgetCaptchaParams> {
   return {
-    type: CHANGE_DOWNLOAD_STATUS,
+    type: GET_CAPTCHA_FOR_RESET_PASSWORD,
+    payload: params
+  }
+}
+
+export function getCaptchaforResetPasswordSuccess(result) {
+  return {
+    type: GET_CAPTCHA_FOR_RESET_PASSWORD_SUCCESS,
     payload: {
-      id
+      result
     }
   }
 }
 
-export function downloadStatusChanged (id) {
+export function getCaptchaforResetPasswordError(error) {
   return {
-    type: CHANGE_DOWNLOAD_STATUS_SUCCESS,
-    payload: {
-      id
-    }
-  }
-}
-
-export function changeDownloadStatusFail (error) {
-  return {
-    type: CHANGE_DOWNLOAD_STATUS_FAILURE,
+    type: GET_CAPTCHA_FOR_RESET_PASSWORD_ERROE,
     payload: {
       error
     }
   }
 }
 
-export function initiateDownloadTask (id, type, downloadParams?, itemId?) {
+export function resetPasswordUnlogged(
+  params: IResetPasswordParams
+): IReduxActionStruct<IResetPasswordParams> {
   return {
-    type: INITIATE_DOWNLOAD_TASK,
+    type: RESET_PASSWORD_UNLOGGED,
+    payload: params
+  }
+}
+
+export function resetPasswordUnloggedSuccess(result) {
+  return {
+    type: RESET_PASSWORD_UNLOGGED_SUCCESS,
     payload: {
-      id,
-      type,
-      downloadParams,
-      itemId
+      result
     }
   }
 }
 
-export function DownloadTaskInitiated (type, itemId?) {
+export function resetPasswordUnloggedFail(error) {
   return {
-    type: INITIATE_DOWNLOAD_TASK_SUCCESS,
+    type: RESET_PASSWORD_UNLOGGED_ERROR,
     payload: {
-      type,
-      itemId
+      error
     }
   }
 }
 
-export function initiateDownloadTaskFail (error) {
+export function getUserByToken(token) {
   return {
-    type: INITIATE_DOWNLOAD_TASK_FAILURE,
+    type: GET_USER_BY_TOKEN,
+    payload: {
+      token
+    }
+  }
+}
+
+export function getUserByTokenSuccess(user) {
+  return {
+    type: GET_USER_BY_TOKEN_SUCCESS,
+    payload: {
+      user
+    }
+  }
+}
+
+export function getUserByTokenFail(error) {
+  return {
+    type: GET_USER_BY_TOKEN_FAIL,
     payload: {
       error
     }

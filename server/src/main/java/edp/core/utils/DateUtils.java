@@ -31,22 +31,22 @@ import java.util.regex.Pattern;
 
 public class DateUtils {
 
-    public static final String DATE_BASE_REGEX = "\\d{4}-\\d{2}-\\d{2}";
+    public static final String DATE_BASE_REGEX = "\\d{4}-\\d{1,2}-\\d{1,2}";
     public static final String SEPARATOR_REGEX = "(T?|\\s*)";
 
     public static final String DATE_REGEX = "^\\s*" + DATE_BASE_REGEX + "\\s*$";
     public static final String DATE_H_REGEX = "^\\s*" + DATE_BASE_REGEX + SEPARATOR_REGEX + "\\d\\d\\s*$";
-    public static final String DATE_HM_REGEX = "^\\s*" + DATE_BASE_REGEX + SEPARATOR_REGEX + "\\d\\d:\\d\\d\\s*$";
-    public static final String DATE_HMS_REGEX = "^\\s*" + DATE_BASE_REGEX + SEPARATOR_REGEX + "\\d\\d:\\d\\d:\\d\\d\\s*$";
-    public static final String DATE_HMS_M_REGEX = "^\\s*" + DATE_BASE_REGEX + SEPARATOR_REGEX + "\\d\\d:\\d\\d:\\d\\d\\.\\d{1,3}\\s*$";
+    public static final String DATE_HM_REGEX = "^\\s*" + DATE_BASE_REGEX + SEPARATOR_REGEX + "\\d{1,2}:\\dd{1,2}\\s*$";
+    public static final String DATE_HMS_REGEX = "^\\s*" + DATE_BASE_REGEX + SEPARATOR_REGEX + "\\d{1,2}:\\d{1,2}:\\d{1,2}\\s*$";
+    public static final String DATE_HMS_M_REGEX = "^\\s*" + DATE_BASE_REGEX + SEPARATOR_REGEX + "\\d{1,2}:\\d{1,2}:\\d{1,2}\\.\\d{1,3}\\s*$";
 
     private enum DATE_FORMAT_ENUM {
 
-        DATE(Pattern.compile(DATE_REGEX), "yyyy-MM-dd"),
-        DATE_H(Pattern.compile(DATE_H_REGEX), "yyyy-MM-dd HH"),
-        DATE_HM(Pattern.compile(DATE_HM_REGEX), "yyyy-MM-dd HH:mm"),
-        DATE_HMS(Pattern.compile(DATE_HMS_REGEX), "yyyy-MM-dd HH:mm:ss"),
-        DATE_HMS_M(Pattern.compile(DATE_HMS_M_REGEX), "yyyy-MM-dd HH:mm:ss.SSS");
+        DATE(Pattern.compile(DATE_REGEX), "yyyy-M-d"),
+        DATE_H(Pattern.compile(DATE_H_REGEX), "yyyy-M-d H"),
+        DATE_HM(Pattern.compile(DATE_HM_REGEX), "yyyy-M-d H:m"),
+        DATE_HMS(Pattern.compile(DATE_HMS_REGEX), "yyyy-M-d H:m:s"),
+        DATE_HMS_M(Pattern.compile(DATE_HMS_M_REGEX), "yyyy-M-d H:m:s.SSS");
 
         private Pattern pattern;
         private String format;
@@ -102,42 +102,42 @@ public class DateUtils {
         }
     }
 
-    public static Date currentData() {
+    public static Date currentDate() {
         return new Date();
     }
 
     public static long getNowMilliSecondTime() {
-        return currentData().getTime();
+        return currentDate().getTime();
     }
 
 
     public static String getNowDateYYYYMM() {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMM");
 
-        return formatter.format(currentData());
+        return formatter.format(currentDate());
     }
 
     public static String getNowDateYYYYMMDD() {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd");
 
-        return formatter.format(currentData());
+        return formatter.format(currentDate());
     }
 
-    public static String getTheDayBeforNowDateYYYYMMDD() {
+    public static String getTheDayBeforeNowDateYYYYMMDD() {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd");
 
         Calendar calendar = Calendar.getInstance();
-        calendar.setTime(currentData());
+        calendar.setTime(currentDate());
         calendar.add(Calendar.DAY_OF_MONTH, -1);
 
         return formatter.format(calendar.getTime());
     }
 
-    public static String getTheDayBeforAWeekYYYYMMDD() {
+    public static String getTheDayBeforeAWeekYYYYMMDD() {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd");
 
         Calendar calendar = Calendar.getInstance();
-        calendar.setTime(currentData());
+        calendar.setTime(currentDate());
         calendar.add(Calendar.DAY_OF_MONTH, -7);
 
         return formatter.format(calendar.getTime());
@@ -146,12 +146,12 @@ public class DateUtils {
     public static String getNowDateFormatCustom(String format) {
         SimpleDateFormat formatter = new SimpleDateFormat(format);
 
-        return formatter.format(currentData());
+        return formatter.format(currentDate());
     }
 
     public static long getNowDaySecondTime0() {
         Calendar c = Calendar.getInstance();
-        Date d = currentData();
+        Date d = currentDate();
         c.setTime(d);
         c.set(c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH), 0, 0, 0);
 
@@ -312,6 +312,45 @@ public class DateUtils {
             return null;
         }
         return toSqlDate(new Date(timeLongInMicros));
+    }
+
+    public static Date dateFormat(String date, String dateFormat) {
+        if (date == null) {
+            return null;
+        }
+        SimpleDateFormat format = new SimpleDateFormat(dateFormat);
+        try {
+            return format.parse(date);
+        } catch (Exception ex) {
+
+        }
+        return null;
+    }
+
+    public static String dateFormat(Date date, String dateFormat) {
+        if (date == null) {
+            return "";
+        }
+        SimpleDateFormat format = new SimpleDateFormat(dateFormat);
+        try {
+            return format.format(date);
+        } catch (Exception ex) {
+
+        }
+        return "";
+    }
+
+    public static Date add(Date date, int field, int amount) {
+
+        if (date == null) {
+            date = new Date();
+        }
+
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(date);
+        cal.add(field, amount);
+
+        return cal.getTime();
     }
 
 }

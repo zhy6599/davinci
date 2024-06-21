@@ -21,8 +21,12 @@ package edp.davinci.service.excel;
 
 import edp.davinci.core.config.SpringContextHolder;
 import edp.davinci.core.enums.DownloadTaskStatus;
+import edp.davinci.dao.CronJobMapper;
 import edp.davinci.dao.DownloadRecordMapper;
+import edp.davinci.dao.ShareDownloadRecordMapper;
+import edp.davinci.dto.cronJobDto.MsgMailExcel;
 import edp.davinci.model.DownloadRecord;
+import edp.davinci.model.ShareDownloadRecord;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 
@@ -36,17 +40,16 @@ import org.apache.commons.lang.StringUtils;
 @Slf4j
 public abstract class MsgNotifier {
 
-
     protected void tell(MsgWrapper wrapper) {
         if (wrapper == null || wrapper.getMsg() == null) {
-            log.error("wrapper is null,nothing to do");
+            log.error("Wrapper is null,nothing to do");
             return;
         }
         switch (wrapper.getAction()) {
             case DOWNLOAD:
                 DownloadRecord record = (DownloadRecord) wrapper.getMsg();
                 if (record == null) {
-                    log.error("DownloadAction record is null,nothing to do");
+                    log.error("DownloadAction record is null, nothing to do");
                     break;
                 }
                 if (StringUtils.isNotEmpty(wrapper.getRst())) {
@@ -59,7 +62,30 @@ public abstract class MsgNotifier {
                 log.info("DownloadAction record is updated status=" + record.getStatus());
                 break;
             case MAIL:
-                log.info("MailAction,nothing to do");
+                MsgMailExcel msg = (MsgMailExcel) wrapper.getMsg();
+                if (msg.getException() != null) {
+                    ((CronJobMapper) SpringContextHolder.getBean(CronJobMapper.class)).updateExecLog(msg.getId(), msg.toString());
+                    log.error("Cronjob({}) send mail error:{}, xUUID:{}", msg.getId(), msg.getException().getMessage(), wrapper.getxUUID());
+                } else {
+                    log.info("Cronjob({}) send mail finish, xUUID:{}", msg.getId(), wrapper.getxUUID());
+                }
+                break;
+
+            case SHAREDOWNLOAD:
+                ShareDownloadRecord shareDownloadRecord = (ShareDownloadRecord) wrapper.getMsg();
+                if (shareDownloadRecord == null) {
+                    log.error("ShareDownloadAction record is null,nothing to do");
+                    break;
+                }
+
+                if (StringUtils.isNotEmpty(wrapper.getRst())) {
+                    shareDownloadRecord.setStatus(DownloadTaskStatus.SUCCESS.getStatus());
+                    shareDownloadRecord.setPath(wrapper.getRst());
+                } else {
+                    shareDownloadRecord.setStatus(DownloadTaskStatus.FAILED.getStatus());
+                }
+                ((ShareDownloadRecordMapper) SpringContextHolder.getBean(ShareDownloadRecordMapper.class)).updateById(shareDownloadRecord);
+                log.info("ShareDownloadAction record is updated status=" + shareDownloadRecord.getStatus());
                 break;
         }
     }

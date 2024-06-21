@@ -13,11 +13,9 @@ module.exports = require('./webpack.base.babel')({
   // In production, we skip all hot-reloading stuff
   entry: {
     app: [
-      require.resolve('react-app-polyfill/ie11'),
       path.join(process.cwd(), 'app/app.tsx')
     ],
     share: [
-      require.resolve('react-app-polyfill/ie11'),
       path.join(process.cwd(), 'share/app.tsx')
     ]
   },
@@ -28,27 +26,9 @@ module.exports = require('./webpack.base.babel')({
     chunkFilename: '[name].[chunkhash].chunk.js'
   },
 
-  tsLoaders: [
-    // {
-    //   loader: 'awesome-typescript-loader',
-    //   options: {
-    //     useBabel: true,
-    //     babelOptions: {
-    //       babelrc: true
-    //     },
-    //     useCache: false
-    //   }
-    // }
-    {
-      loader: 'babel-loader'
-    },
-    {
-      loader: 'ts-loader',
-      options: {
-        transpileOnly: true
-      }
-    }
-  ],
+  tsLoaders: [{
+    loader: 'babel-loader'
+  }],
 
   optimization: {
     minimize: true,
@@ -75,7 +55,8 @@ module.exports = require('./webpack.base.babel')({
     sideEffects: true,
     concatenateModules: true,
     splitChunks: {
-      chunks: 'all',
+      // chunks: 'all',
+      chunks: 'async',
       minSize: 30000,
       minChunks: 1,
       maxAsyncRequests: 5,
@@ -83,7 +64,7 @@ module.exports = require('./webpack.base.babel')({
       name: true,
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/](?!antd|jquery|three|bootstrap-datepicker|((react-)?quill))(.[a-zA-Z0-9.\-_]+)[\\/]/,
+          test: /[\\/]node_modules[\\/](?!antd|jquery|three|bootstrap-datepicker)(.[a-zA-Z0-9.\-_]+)[\\/]/,
           // test: /[\\/]node_modules[\\/]/,
           name: 'vendor',
           chunks: 'all'

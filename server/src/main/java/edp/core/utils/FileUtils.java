@@ -20,19 +20,30 @@
 package edp.core.utils;
 
 import com.alibaba.druid.util.StringUtils;
-import edp.core.consts.Consts;
+import com.sun.image.codec.jpeg.JPEGCodec;
+import com.sun.image.codec.jpeg.JPEGImageEncoder;
+import edp.davinci.core.enums.ActionEnum;
 import edp.davinci.core.enums.FileTypeEnum;
+import edp.davinci.core.enums.LogNameEnum;
+import edp.davinci.service.excel.MsgWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.FileCopyUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
 import javax.servlet.http.HttpServletResponse;
+import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
+import java.nio.charset.Charset;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -42,10 +53,10 @@ import static edp.core.consts.Consts.*;
 @Component
 public class FileUtils {
 
+    private static final Logger scheduleLogger = LoggerFactory.getLogger(LogNameEnum.BUSINESS_SCHEDULE.getName());
 
     @Value("${file.userfiles-path}")
     public String fileBasePath;
-
 
     /**
      * 校验MultipartFile 是否图片
@@ -54,18 +65,12 @@ public class FileUtils {
      * @return
      */
     public boolean isImage(MultipartFile file) {
-
-        Pattern pattern = Pattern.compile(Consts.REG_IMG_FORMAT);
-        Matcher matcher = pattern.matcher(file.getOriginalFilename());
-
+        Matcher matcher = PATTERN_IMG_FROMAT.matcher(file.getOriginalFilename());
         return matcher.find();
     }
 
     public boolean isImage(File file) {
-
-        Pattern pattern = Pattern.compile(Consts.REG_IMG_FORMAT);
-        Matcher matcher = pattern.matcher(file.getName());
-
+        Matcher matcher = PATTERN_IMG_FROMAT.matcher(file.getName());
         return matcher.find();
     }
 
@@ -138,7 +143,7 @@ public class FileUtils {
                 file = new File(filePath);
             }
             if (file.exists()) {
-                byte[] buffer = new byte[0];
+                byte[] buffer = null;
                 InputStream is = null;
                 OutputStream os = null;
                 try {
@@ -155,16 +160,8 @@ public class FileUtils {
                 } catch (IOException e) {
                     e.printStackTrace();
                 } finally {
-                    try {
-                        if (null != is) {
-                            is.close();
-                        }
-                        if (null != os) {
-                            os.close();
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    closeCloseable(os);
+                    closeCloseable(is);
                     remove(filePath);
                 }
             }
@@ -183,8 +180,7 @@ public class FileUtils {
         }
         File file = new File(filePath);
         if (file.exists() && file.isFile()) {
-            file.delete();
-            return true;
+            return file.delete();
         }
         return false;
     }
@@ -197,9 +193,11 @@ public class FileUtils {
      * @return
      */
     public static void deleteDir(File dir) {
+
         if (dir.isFile() || dir.list().length == 0) {
             dir.delete();
-        } else {
+        }
+        else {
             for (File f : dir.listFiles()) {
                 deleteDir(f);
             }
@@ -214,6 +212,9 @@ public class FileUtils {
      * @return
      */
     public String formatFilePath(String filePath) {
+        if(filePath == null) {
+            return null;
+        }
         return filePath.replace(fileBasePath, EMPTY).replaceAll(File.separator + "{2,}", File.separator);
     }
 
@@ -224,48 +225,226 @@ public class FileUtils {
      * @param targetFile
      */
     public static void zipFile(List<File> files, File targetFile) {
-        byte[] bytes = new byte[1024];
 
+        byte[] bytes = new byte[1024];
+        ZipOutputStream out = null;
+        FileInputStream in = null;
         try {
-            ZipOutputStream out = new ZipOutputStream(new FileOutputStream(targetFile));
+            out = new ZipOutputStream(new FileOutputStream(targetFile));
             for (File file : files) {
-                FileInputStream in = new FileInputStream(file);
-                out.putNextEntry(new ZipEntry(file.getName()));
-                int length;
-                while ((length = in.read(bytes)) > 0) {
-                    out.write(bytes, 0, length);
+                try {
+                    in = new FileInputStream(file);
+                    out.putNextEntry(new ZipEntry(file.getName()));
+                    int length;
+                    while ((length = in.read(bytes)) > 0) {
+                        out.write(bytes, 0, length);
+                    }
+                    out.closeEntry();
+                    closeCloseable(in);
                 }
-                out.closeEntry();
-                in.close();
+                catch (Exception e) {
+                    e.printStackTrace();
+                }
+                finally {
+                    closeCloseable(in);
+                }
             }
-            out.close();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             e.printStackTrace();
+        }finally {
+            closeCloseable(out);
         }
     }
 
-    public String getFilePath(FileTypeEnum type, Long id) {
+    /**
+     * 图片压缩，图片比例按原比例输出
+     * tips: 压缩后的图片会替换原有的图片
+     * @param filepath
+     */
+    public static File compressedImage(String filepath) {
+        try {
+            File file = new File(filepath);
+            BufferedImage img_dest= null;
+
+            BufferedImage img_src = ImageIO.read(file);
+            int width = img_src.getWidth();
+            int height = img_src.getHeight();
+            long imageLength = file.length();
+
+            // 如果首次压缩图片还大于2M，则继续压缩
+            while (imageLength > (2 * 1024 * 1024)) {
+                // 开始读取文件并进行压缩
+
+                // 压缩模式设置
+                img_dest = new BufferedImage( width,  height, BufferedImage.TYPE_INT_RGB);
+                img_dest.getGraphics().drawImage(img_src.getScaledInstance(width, height, Image.SCALE_SMOOTH), 0, 0, null);
+
+                // 缩小
+                ImageIO.write(img_dest, "jpg", file);
+
+                // 计算图片压缩率
+                float rate = calcCompressedRate(imageLength, file.length());
+                // 如果压缩率小于10%，则不再进行压缩
+                if (rate < 10) {
+                    scheduleLogger.warn("Forced interruption, compression rate is less than {}",rate);
+                    break;
+                }
+
+                imageLength = file.length();
+                scheduleLogger.warn("File size after compression {},Compress again",imageLength);
+            }
+            imageLength = file.length();
+            scheduleLogger.warn("Final compressed file size {}",imageLength);
+
+            FileOutputStream output = new FileOutputStream(filepath);
+            //将图片按JPEG压缩
+            JPEGImageEncoder encoder = JPEGCodec.createJPEGEncoder(output);
+            encoder.encode(img_dest);
+            output.close();
+
+            return new File(filepath);
+        } catch (Exception e) {
+            scheduleLogger.error("Image compression failed",e);
+        }
+        return null;
+    }
+
+    /**
+     * 计算图片压缩率
+     * @param originLength
+     * @param compressedLength
+     * @return
+     */
+    public static float calcCompressedRate(long originLength, long compressedLength) {
+        DecimalFormat df = new DecimalFormat("0.000");
+        String rate = df.format((float)compressedLength  / originLength);
+        float result=  Float.valueOf(rate) * 100;
+        scheduleLogger.info("compression {}/{}={}%",compressedLength,originLength,result);
+        return result;
+    }
+
+    public String getFilePath(FileTypeEnum type, MsgWrapper msgWrapper) {
         StringBuilder sb = new StringBuilder(this.fileBasePath);
         if (!sb.toString().endsWith(File.separator)) {
             sb.append(File.separator);
         }
-        sb.append(DIR_DOWNLOAD);
+        if (msgWrapper.getAction() == ActionEnum.DOWNLOAD) {
+            sb.append(DIR_DOWNLOAD);
+        } else if (msgWrapper.getAction() == ActionEnum.SHAREDOWNLOAD) {
+            sb.append(DIR_SHARE_DOWNLOAD);
+        } else if (msgWrapper.getAction() == ActionEnum.MAIL) {
+            sb.append(DIR_EMAIL);
+        }
         sb.append(new SimpleDateFormat("yyyyMMdd").format(new Date())).append(File.separator);
         sb.append(type.getType()).append(File.separator);
         File dir = new File(sb.toString());
         if (!dir.exists()) {
             dir.mkdirs();
         }
-        sb.append(id).append(UNDERLINE).append(System.currentTimeMillis()).append(type.getFormat());
-        return sb.toString().replaceAll(File.separator + "{2,}", File.separator);
+        if (msgWrapper.getAction() == ActionEnum.DOWNLOAD) {
+            sb.append(msgWrapper.getxId());
+        } else if (msgWrapper.getAction() == ActionEnum.SHAREDOWNLOAD || msgWrapper.getAction() == ActionEnum.MAIL) {
+            sb.append(msgWrapper.getxUUID());
+        }
+        sb.append(UNDERLINE).append(System.currentTimeMillis()).append(type.getFormat());
+        return new File(sb.toString()).getAbsolutePath();
+    }
+
+    /**
+     * Read content from file
+     * @param fileName
+     * @return
+     */
+    public static String readFileToString(String fileName, String charset) {
+        File file = new File(fileName);
+        BufferedReader reader = null;
+        StringBuffer sbf = new StringBuffer();
+        try {
+            reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), charset));
+            String tempStr;
+            while ((tempStr = reader.readLine()) != null) {
+                sbf.append(tempStr);
+            }
+            reader.close();
+            return sbf.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                }
+            }
+        }
+        return sbf.toString();
+    }
+
+    /**
+     * Write content to file
+     * @param path
+     * @param fileName
+     * @param content
+     * @param encoding
+     */
+    public static void writeStringToFile(String path, String fileName, String content, Charset encoding) {
+        FileOutputStream fos = null;
+        OutputStreamWriter osw = null;
+        try {
+            File f = new File(path);
+            if (!f.exists()){
+                f.mkdirs();
+            }
+            File file = new File(path, fileName);
+            if (!file.exists()){
+                file.createNewFile();
+            }
+
+            fos = new FileOutputStream(file);
+            osw = new OutputStreamWriter(fos, encoding);
+            osw.write(content);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (osw != null){
+                try {
+                    osw.flush();
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                }
+            }
+        }
     }
 
     public static boolean delete(String filePath) {
         File file = new File(filePath);
         if (file.exists() && file.isFile()) {
-            file.delete();
-            return true;
+            return file.delete();
         }
         return false;
+    }
+    
+    public static void closeCloseable(Closeable c) {
+        if(c != null) {
+            try {
+                c.close();
+            }
+            catch (IOException e) {
+                // ignore
+            }
+        }
+    }
+
+    public static int copy(File in, File out) {
+        try {
+            return FileCopyUtils.copy(in, out);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return -1;
     }
 }

@@ -18,248 +18,271 @@
  * >>
  */
 
-import { fromJS } from 'immutable'
+import produce from 'immer'
+import { ActionTypes, DashboardItemStatus } from './constants'
+import { DashboardActionType } from './actions'
+import { DownloadStatus } from 'containers/App/constants'
 
+import { fieldGroupedSort } from 'containers/Widget/components/Config/Sort'
+import { IShareDashboardState } from './types'
 import {
-  LOAD_SHARE_DASHBOARD_SUCCESS,
-  LOAD_SHARE_WIDGET_SUCCESS,
-  SET_INDIVIDUAL_DASHBOARD,
-  LOAD_SHARE_RESULTSET,
-  LOAD_SHARE_RESULTSET_SUCCESS,
-  LOAD_WIDGET_CSV,
-  LOAD_WIDGET_CSV_SUCCESS,
-  LOAD_WIDGET_CSV_FAILURE,
-  LOAD_SELECT_OPTIONS_SUCCESS,
-  RESIZE_ALL_DASHBOARDITEM,
-  DRILL_DASHBOARDITEM,
-  DELETE_DRILL_HISTORY,
-  SET_SELECT_OPTIONS,
-  SELECT_DASHBOARD_ITEM_CHART,
-  GLOBAL_CONTROL_CHANGE
-} from './constants'
-import { IMapItemControlRequestParams, IControlRequestParams } from 'app/components/Filters';
+  getShareInitialItemInfo,
+  initDefaultValuesFromShareParams
+} from './util'
+import { getGlobalControlInitialValues } from 'app/containers/Dashboard/util'
 
-const initialState = fromJS({
+const initialState: IShareDashboardState = {
   dashboard: null,
   title: '',
-  config: '{}',
-  dashboardSelectOptions: null,
   widgets: null,
+  formedViews: {},
   items: null,
-  itemsInfo: null
-})
+  itemsInfo: null,
+  downloadListLoading: false,
+  downloadList: null,
+  downloadListInfo: null,
+  shareParams: null,
+  fullScreenPanelItemId: null
+}
 
-function shareReducer (state = initialState, { type, payload }) {
-  const dashboardSelectOptions = state.get('dashboardSelectOptions')
-  const itemsInfo = state.get('itemsInfo')
-  let widgets = state.get('widgets')
+const shareReducer = (state = initialState, action: DashboardActionType) =>
+  produce(state, (draft) => {
+    let itemInfo
+    let drillHistory
 
-  switch (type) {
-    case LOAD_SHARE_DASHBOARD_SUCCESS:
-      return state
-        .set('title', payload.dashboard.name)
-        .set('dashboard', payload.dashboard)
-        .set('config', payload.dashboard.config)
-        .set('dashboardSelectOptions', {})
-        .set('widgets', payload.dashboard.widgets)
-        .set('items', payload.dashboard.relations)
-        .set('itemsInfo', payload.dashboard.relations.reduce((obj, item) => {
-          obj[item.id] = {
-            datasource: { resultList: [] },
-            loading: false,
-            queryConditions: {
-              tempFilters: [],
-              linkageFilters: [],
-              globalFilters: [],
-              variables: [],
-              linkageVariables: [],
-              globalVariables: [],
-              pagination: {}
-            },
-            downloadCsvLoading: false,
-            interactId: '',
-            renderType: 'rerender',
-            controlSelectOptions: {}
+    switch (action.type) {
+      case ActionTypes.SEND_SHARE_PARAMS:
+        draft.shareParams = action.payload.params
+        break
+
+      case ActionTypes.LOAD_SHARE_DASHBOARD_SUCCESS:
+        const { dashboard, items, widgets, formedViews } = action.payload
+
+        initDefaultValuesFromShareParams(
+          dashboard.config.filters,
+          draft.shareParams
+        )
+
+        const globalControlsInitialValue = getGlobalControlInitialValues(
+          dashboard.config.filters,
+          formedViews
+        )
+
+        draft.title = dashboard.name
+        draft.dashboard = dashboard
+        draft.widgets = widgets
+        draft.formedViews = formedViews
+        draft.items = items
+        draft.itemsInfo = items.reduce((info, item) => {
+          const relatedWidget = widgets.find((w) => w.id === item.widgetId)
+          const initialItemInfo = getShareInitialItemInfo(
+            relatedWidget,
+            formedViews
+          )
+
+          if (globalControlsInitialValue[item.id]) {
+            const {
+              globalFilters,
+              globalVariables
+            } = globalControlsInitialValue[item.id]
+            initialItemInfo.queryConditions = {
+              ...initialItemInfo.queryConditions,
+              globalFilters,
+              globalVariables
+            }
           }
-          return obj
-        }, {}))
-    case SET_INDIVIDUAL_DASHBOARD:
-      return state
-        .set('items', [{
-          id: 1,
-          x: 0,
-          y: 0,
-          width: 12,
-          height: 12,
-          polling: false,
-          frequency: 0,
-          widgetId: payload.widgetId,
-          dataToken: payload.token
-        }])
-        .set('itemsInfo', {
-          1: {
-            datasource: { resultList: [] },
-            loading: false,
-            queryConditions: {
-              tempFilters: [],
-              linkageFilters: [],
-              globalFilters: [],
-              variables: [],
-              linkageVariables: [],
-              globalVariables: [],
-              pagination: {}
-            },
-            downloadCsvLoading: false,
-            interactId: '',
-            renderType: 'rerender',
-            controlSelectOptions: {}
+
+          info[item.id] = initialItemInfo
+          return info
+        }, {})
+        break
+
+      case ActionTypes.SET_INDIVIDUAL_DASHBOARD:
+        draft.title = action.payload.widget.name
+        draft.items = [
+          {
+            id: 1,
+            x: 0,
+            y: 0,
+            width: 12,
+            height: 12,
+            polling: false,
+            frequency: 0,
+            widgetId: action.payload.widget.id,
+            dashboardId: 0,
+            config: ''
           }
-        })
-    case LOAD_SHARE_WIDGET_SUCCESS:
-      if (!widgets) {
-        widgets = []
-      }
-      return state.set('widgets', widgets.concat(payload.widget))
-    case SELECT_DASHBOARD_ITEM_CHART:
-      return state.set('itemsInfo', {
-        ...itemsInfo,
-        [payload.itemId]: {
-          ...itemsInfo[payload.itemId],
-          renderType: payload.renderType,
-          selectedItems: payload.selectedItems
+        ]
+        draft.itemsInfo = {
+          1: getShareInitialItemInfo(
+            action.payload.widget,
+            action.payload.formedViews
+          )
         }
-      })
-    case LOAD_SHARE_RESULTSET:
-      return state.set('itemsInfo', {
-        ...itemsInfo,
-        [payload.itemId]: {
-          ...itemsInfo[payload.itemId],
-          selectedItems: [],
-          loading: true,
-          queryConditions: {
-            ...itemsInfo[payload.itemId].queryConditions,
-            tempFilters: payload.requestParams.tempFilters,
-            linkageFilters: payload.requestParams.linkageFilters,
-            globalFilters: payload.requestParams.globalFilters,
-            variables: payload.requestParams.variables,
-            linkageVariables: payload.requestParams.linkageVariables,
-            globalVariables: payload.requestParams.globalVariables,
-            pagination: payload.requestParams.pagination,
-            nativeQuery: payload.requestParams.nativeQuery
-          }
+        break
+
+      case ActionTypes.LOAD_SHARE_WIDGET_SUCCESS:
+        if (!draft.widgets) {
+          draft.widgets = []
         }
-      })
-    case GLOBAL_CONTROL_CHANGE:
-      const controlRequestParamsByItem: IMapItemControlRequestParams = payload.controlRequestParamsByItem
-      Object.entries(controlRequestParamsByItem)
-        .forEach(([itemId, requestParams]: [string, IControlRequestParams]) => {
-          const { filters: globalFilters, variables: globalVariables } = requestParams
-          itemsInfo[itemId].queryConditions = {
-            ...itemsInfo[itemId].queryConditions,
-            ...globalFilters && { globalFilters },
-            ...globalVariables && { globalVariables }
-          }
-        })
-      return state.set('itemsInfo', itemsInfo)
-    case DRILL_DASHBOARDITEM:
-      if (!itemsInfo[payload.itemId].queryConditions.drillHistory) {
-        itemsInfo[payload.itemId].queryConditions.drillHistory = []
-      }
-      return state.set('itemsInfo', {
-        ...itemsInfo,
-        [payload.itemId]: {
-          ...itemsInfo[payload.itemId],
-          queryConditions: {
-            ...itemsInfo[payload.itemId].queryConditions,
-            drillHistory: itemsInfo[payload.itemId].queryConditions.drillHistory.concat(payload.drillHistory)
-          }
+        draft.widgets = draft.widgets.concat(action.payload.widget)
+        draft.formedViews = action.payload.formedViews
+        break
+
+      case ActionTypes.SELECT_DASHBOARD_ITEM_CHART:
+        draft.itemsInfo[action.payload.itemId].renderType =
+          action.payload.renderType
+        draft.itemsInfo[action.payload.itemId].selectedItems =
+          action.payload.selectedItems
+        break
+
+      case ActionTypes.LOAD_SHARE_RESULTSET:
+        draft.itemsInfo[action.payload.itemId].status =
+          DashboardItemStatus.Pending
+        draft.itemsInfo[action.payload.itemId].loading = true
+        draft.itemsInfo[action.payload.itemId].errorMessage = ''
+        break
+
+      case ActionTypes.DRILL_DASHBOARDITEM:
+        drillHistory =
+          draft.itemsInfo[action.payload.itemId].queryConditions.drillHistory
+        if (!drillHistory) {
+          draft.itemsInfo[
+            action.payload.itemId
+          ].queryConditions.drillHistory = []
         }
-      })
-    case DELETE_DRILL_HISTORY:
-      return state.set('itemsInfo', {
-        ...itemsInfo,
-        [payload.itemId]: {
-          ...itemsInfo[payload.itemId],
-          queryConditions: {
-            ...itemsInfo[payload.itemId].queryConditions,
-            drillHistory: itemsInfo[payload.itemId].queryConditions.drillHistory.slice(0, payload.index + 1)
-          }
+        draft.itemsInfo[
+          action.payload.itemId
+        ].queryConditions.drillHistory.push(action.payload.drillHistory)
+        break
+
+      case ActionTypes.DELETE_DRILL_HISTORY:
+        drillHistory =
+          draft.itemsInfo[action.payload.itemId].queryConditions.drillHistory
+        if (Array.isArray(drillHistory)) {
+          drillHistory.splice(action.payload.index + 1)
         }
-      })
-    case LOAD_SHARE_RESULTSET_SUCCESS:
-      return state.set('itemsInfo', {
-        ...itemsInfo,
-        [payload.itemId]: {
-          ...itemsInfo[payload.itemId],
+        break
+
+      case ActionTypes.LOAD_SHARE_RESULTSET_SUCCESS:
+        const {
+          tempFilters,
+          linkageFilters,
+          globalFilters,
+          variables,
+          linkageVariables,
+          globalVariables,
+          pagination,
+          nativeQuery,
+          customOrders
+        } = action.payload.requestParams
+
+        fieldGroupedSort(action.payload.result.resultList, customOrders)
+
+        draft.itemsInfo[action.payload.itemId] = {
+          ...draft.itemsInfo[action.payload.itemId],
+          status: DashboardItemStatus.Fulfilled,
           loading: false,
-          datasource: payload.resultset || { resultList: [] },
-          renderType: payload.renderType
+          datasource: action.payload.result,
+          renderType: action.payload.renderType,
+          queryConditions: {
+            ...draft.itemsInfo[action.payload.itemId].queryConditions,
+            tempFilters,
+            linkageFilters,
+            globalFilters,
+            variables,
+            linkageVariables,
+            globalVariables,
+            pagination,
+            nativeQuery
+          },
+          selectedItems: []
         }
-      })
-    case LOAD_WIDGET_CSV:
-      return state.set('itemsInfo', {
-        ...itemsInfo,
-        [payload.itemId]: {
-          ...itemsInfo[payload.itemId],
-          downloadCsvLoading: true
+        break
+
+      case ActionTypes.LOAD_SHARE_RESULTSET_FAILURE:
+        draft.itemsInfo[action.payload.itemId] = {
+          ...draft.itemsInfo[action.payload.itemId],
+          status: DashboardItemStatus.Error,
+          loading: false,
+          errorMessage: action.payload.errorMessage
         }
-      })
-    case LOAD_WIDGET_CSV_SUCCESS:
-    case LOAD_WIDGET_CSV_FAILURE:
-      return state.set('itemsInfo', {
-        ...itemsInfo,
-        [payload.itemId]: {
-          ...itemsInfo[payload.itemId],
-          downloadCsvLoading: false
-        }
-      })
-    case LOAD_SELECT_OPTIONS_SUCCESS:
-      return payload.itemId
-        ? state.set('itemsInfo', {
-          ...itemsInfo,
-          [payload.itemId]: {
-            ...itemsInfo[payload.itemId],
-            controlSelectOptions: {
-              ...itemsInfo[payload.itemId].controlSelectOptions,
-              [payload.controlKey]: payload.values
-            }
-          }
+        break
+
+      case ActionTypes.LOAD_BATCH_DATA_WITH_CONTROL_VALUES:
+        action.payload.relatedItems.forEach((itemId) => {
+          draft.itemsInfo[itemId].status = DashboardItemStatus.Pending
+          draft.itemsInfo[itemId].loading = true
+          draft.itemsInfo[itemId].errorMessage = ''
         })
-        : state.set('dashboardSelectOptions', {
-          ...dashboardSelectOptions,
-          [payload.controlKey]: payload.values
+        break
+
+      case ActionTypes.LOAD_WIDGET_CSV:
+        draft.itemsInfo[action.payload.itemId].downloadCsvLoading = true
+        break
+
+      case ActionTypes.LOAD_WIDGET_CSV_SUCCESS:
+      case ActionTypes.LOAD_WIDGET_CSV_FAILURE:
+        draft.itemsInfo[action.payload.itemId].downloadCsvLoading = false
+        break
+
+      case ActionTypes.INITIATE_DOWNLOAD_TASK:
+        draft.itemsInfo[action.payload.itemId].downloadCsvLoading = true
+        break
+
+      case ActionTypes.INITIATE_DOWNLOAD_TASK_SUCCESS:
+      case ActionTypes.INITIATE_DOWNLOAD_TASK_FAILURE:
+        draft.itemsInfo[action.payload.itemId].downloadCsvLoading = false
+        break
+
+      case ActionTypes.RESIZE_DASHBOARDITEM:
+        itemInfo = draft.itemsInfo[action.payload.itemId]
+        itemInfo.renderType = 'resize'
+        itemInfo.datasource = { ...itemInfo.datasource }
+        break
+
+      case ActionTypes.RESIZE_ALL_DASHBOARDITEM:
+        Object.values(draft.itemsInfo).forEach((itemInfo: any) => {
+          itemInfo.renderType = 'resize'
+          itemInfo.datasource = { ...itemInfo.datasource }
         })
-    case SET_SELECT_OPTIONS:
-      return payload.itemId
-        ? state.set('itemsInfo', {
-          ...itemsInfo,
-          [payload.itemId]: {
-            ...itemsInfo[payload.itemId],
-            controlSelectOptions: {
-              ...itemsInfo[payload.itemId].controlSelectOptions,
-              [payload.controlKey]: payload.options
-            }
-          }
-        })
-        : state.set('dashboardSelectOptions', {
-          ...dashboardSelectOptions,
-          [payload.controlKey]: payload.options
-        })
-    case RESIZE_ALL_DASHBOARDITEM:
-      return state.set(
-        'itemsInfo',
-        Object.entries(itemsInfo).reduce((info, [key, prop]: [string, any]) => {
-          info[key] = {
-            ...prop,
-            renderType: 'resize',
-            datasource: {...prop.datasource}
+        break
+
+      case ActionTypes.RENDER_CHART_ERROR:
+        draft.itemsInfo[
+          action.payload.itemId
+        ].errorMessage = action.payload.error.toString()
+        break
+
+      case ActionTypes.LOAD_DOWNLOAD_LIST:
+        draft.downloadListLoading = true
+        break
+
+      case ActionTypes.LOAD_DOWNLOAD_LIST_SUCCESS:
+        draft.downloadListLoading = false
+        draft.downloadList = action.payload.list
+
+        draft.downloadListInfo = action.payload.list.reduce((info, item) => {
+          info[item.id] = {
+            loading: false
           }
           return info
         }, {})
-      )
-    default:
-      return state
-  }
-}
+        break
+
+      case ActionTypes.LOAD_DOWNLOAD_LIST_FAILURE:
+        draft.downloadListLoading = false
+        break
+
+      case ActionTypes.DOWNLOAD_FILE_SUCCESS:
+        draft.downloadList.find(({ id }) => id === action.payload.id).status =
+          DownloadStatus.Downloaded
+        break
+
+      case ActionTypes.SET_FULL_SCREEN_PANEL_ITEM_ID:
+        draft.fullScreenPanelItemId = action.payload.itemId
+        break
+    }
+  })
 
 export default shareReducer

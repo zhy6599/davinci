@@ -1,4 +1,4 @@
-@import "../../../node_modules/antd/lib/style/themes/default";
+@import "~antd/lib/style/themes/default";
 
 @blue                               : #1B98E0;
 @white                              : #fff;
@@ -39,5 +39,55 @@
   -ms-overflow-style: none !important;
   &::-webkit-scrollbar {
     display: none;
+  }
+}
+
+.antFormItemLabelCustom(@fontSize, @lineHeight, @marginBottom) {
+  :global {
+    .ant-form-item {
+      margin-bottom: @marginBottom;
+    }
+    .ant-form-item-label {
+      line-height: @lineHeight;
+  
+      label {
+        color: @disabled-text-color;
+        font-size: @fontSize;
+        font-weight: bold;
+      }
+    }
+    .ant-form-item-required:before {
+      margin-right: 2px;
+      vertical-align: middle;
+    }
+  }
+}
+
+.antFormItemStyleWithoutForm {
+  :global {
+    .ant-select,
+    .ant-input-number {
+      width: 100%;
+    }
+    .ant-input-group {
+      line-height: inherit;
+
+      &.ant-input-group-compact {
+        & > * {
+          vertical-align: baseline
+        }
+      }
+    }
+    .ant-calendar-picker {
+      width: 100% !important;
+      min-width: auto !important;
+    }
+  }
+  &.small {
+    :global {
+      .ant-form-item-control {
+        line-height: 32px;
+      }
+    }
   }
 }

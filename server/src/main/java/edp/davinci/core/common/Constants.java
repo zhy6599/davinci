@@ -43,15 +43,25 @@ public class Constants extends Consts {
      */
     public static final String USER_ACTIVATE_EMAIL_TEMPLATE = "mail/userActivateEmailTemplate";
 
+
+    /**
+     * 用户重置密码邮件模板
+     */
+    public static final String USER_REST_PASSWORD_EMAIL_TEMPLATE = "mail/userRestPasswordEmailTemplate";
+
+
+    public static final String EMAIL_DEFAULT_TEMPLATE = "mail/emaiDefaultTemplate";
+
     /**
      * 用户激活 / 重发激活邮件主题
      */
     public static final String USER_ACTIVATE_EMAIL_SUBJECT = "[Davinci] 用户激活";
 
+
     /**
-     * 用户默认Organization描述
+     * 用户重置密码邮件主题
      */
-    public static final String DEFAULT_ORGANIZATION_DES = "my default organization";
+    public static final String USER_REST_PASSWORD_EMAIL_SUBJECT = "[Davinci] 重置密码";
 
     /**
      * 用户头像上传地址
@@ -69,11 +79,6 @@ public class Constants extends Consts {
      */
     public static final String DISPLAY_AVATAR_PATH = "/image/display/";
 
-
-    /**
-     * CSV地址
-     */
-    public static final String SOURCE_CSV_PATH = "/source/csv/";
 
     /**
      * 邀请组织成员邮件主题
@@ -118,7 +123,7 @@ public class Constants extends Consts {
     /**
      * select 表达式
      */
-    public static final String SELECT_EXEPRESSION = "SELECT * FROM TABLE WHERE %s";
+    public static final String SELECT_EXPRESSION = "SELECT * FROM TABLE WHERE %s";
 
     /**
      * 点赞project
@@ -128,32 +133,17 @@ public class Constants extends Consts {
 
     public static final String REG_USER_PASSWORD = ".{6,20}";
 
-    public static final String EXCEL_FORMAT_KEY = "format";
-
-    public static final String EXCEL_FORMAT_TYPE_KEY = "formatType";
-
     public static final String REG_SQL_PLACEHOLDER = "%s.+%s";
 
-    public static final String REG_AUTHVAR = "\\([a-zA-Z0-9_.-[\\u4e00-\\u9fa5]*]+\\s*[\\w<>!=]*\\s*[a-zA-Z0-9_.-]*((\\(%s[a-zA-Z0-9_]+%s\\))|(%s[a-zA-Z0-9_]+%s))+\\s*\\)";
+    public static final String REG_AUTHVAR = "\\([a-zA-Z0-9_.\\-`\"'[\\u4e00-\\u9fa5]*]+\\s*[\\s\\w<>!=]*\\s*[a-zA-Z0-9_.\\-]*((\\(%s[a-zA-Z0-9_]+%s\\))|(%s[a-zA-Z0-9_]+%s))+\\s*\\)";
+
+    public static final String REG_SYSVAR = "[a-zA-Z0-9_.\\-`\"'\\u4e00-\\u9fa5]+\\s*[\\!=]{1,2}\\s*['\"\\[]?%s['\"\\]]?";
+
+    public static final String REG_IGNORE_CASE = "(?i)";
 
     public static final String LDAP_USER_PASSWORD = "LDAP";
 
-    public static final String N0_AUTH_PERMISSION = "@DAVINCI_DATA_ACCESS_DENIED@";
+    public static final String NO_AUTH_PERMISSION = "@DAVINCI_DATA_ACCESS_DENIED@";
 
-
-    public static char getSqlTempDelimiter(String sqlTempDelimiter) {
-        return sqlTempDelimiter.charAt(sqlTempDelimiter.length() - 1);
-    }
-
-    public static String getReg(String express, char delimiter, boolean isAuthPress) {
-        String arg = String.valueOf(delimiter);
-        if (delimiter == DOLLAR_DELIMITER) {
-            arg = "\\" + arg;
-        }
-        if (isAuthPress) {
-            return String.format(express, arg, arg, arg, arg);
-        } else {
-            return String.format(express, arg, arg);
-        }
-    }
+    public static final String DAVINCI_TOPIC_CHANNEL = "DAVINCI_TOPIC_CHANNEL";
 }

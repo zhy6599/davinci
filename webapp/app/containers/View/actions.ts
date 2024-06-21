@@ -18,16 +18,26 @@
  * >>
  */
 
+import axios from 'axios'
 import { ActionTypes } from './constants'
 import { returnType } from 'utils/redux'
 import { IDavinciResponse } from 'utils/request'
 import {
-  IViewBase, IView, IExecuteSqlParams, IExecuteSqlResponse, IViewInfo,
-  IDacChannel, IDacTenant, IDacBiz
+  IViewBase,
+  IView,
+  IExecuteSqlParams,
+  IExecuteSqlResponse,
+  IViewInfo,
+  IDacChannel,
+  IDacTenant,
+  IDacBiz,
+  IViewQueryResponse
 } from './types'
-import { IDataRequestParams } from 'containers/Dashboard/Grid'
+import { IDataRequestBody } from '../Dashboard/types'
 import { RenderType } from 'containers/Widget/components/Widget'
-import { IDistinctValueReqeustParams } from 'app/components/Filters'
+import { IDistinctValueReqeustParams } from 'app/components/Control/types'
+import { EExecuteType } from './Editor'
+const CancelToken = axios.CancelToken
 
 export const ViewActions = {
   viewsLoaded (views: IViewBase[]) {
@@ -54,19 +64,25 @@ export const ViewActions = {
     }
   },
 
-  viewsDetailLoaded (views: IView[]) {
+  viewsDetailLoaded (views: IView[], isEditing: boolean) {
     return {
       type: ActionTypes.LOAD_VIEWS_DETAIL_SUCCESS,
       payload: {
-        views
+        views,
+        isEditing
       }
     }
   },
-  loadViewsDetail (viewIds: number[], resolve?: () => void) {
+  loadViewsDetail (
+    viewIds: number[],
+    resolve?: (views: IView[]) => void,
+    isEditing: boolean = false
+  ) {
     return {
       type: ActionTypes.LOAD_VIEWS_DETAIL,
       payload: {
         viewIds,
+        isEditing,
         resolve
       }
     }
@@ -150,11 +166,46 @@ export const ViewActions = {
     }
   },
 
-  executeSql (params: IExecuteSqlParams) {
+  copyView (view: IViewBase, resolve: () => void) {
+    return {
+      type: ActionTypes.COPY_VIEW,
+      payload: {
+        view,
+        resolve
+      }
+    }
+  },
+  viewCopied (fromViewId: number, result: IView) {
+    return {
+      type: ActionTypes.COPY_VIEW_SUCCESS,
+      payload: {
+        fromViewId,
+        result
+      }
+    }
+  },
+  copyViewFail () {
+    return {
+      type: ActionTypes.COPY_VIEW_FAILURE,
+      payload: {}
+    }
+  },
+
+  setIsLastExecuteWholeSql (isLastExecuteWholeSql: boolean) {
+    return {
+      type: ActionTypes.IS_LAST_EXECUTE_WHOLE_SQL,
+      payload: {
+        isLastExecuteWholeSql
+      }
+    }
+  },
+
+  executeSql (params: IExecuteSqlParams, exeType: EExecuteType) {
     return {
       type: ActionTypes.EXECUTE_SQL,
       payload: {
-        params
+        params,
+        exeType
       }
     }
   },
@@ -172,6 +223,12 @@ export const ViewActions = {
       payload: {
         err
       }
+    }
+  },
+  executeSqlCancel () {
+    return {
+      type: ActionTypes.EXECUTE_SQL_CANCEL,
+      payload: {}
     }
   },
 
@@ -279,17 +336,26 @@ export const ViewActions = {
   /** */
 
   /** Actions for external usages */
-  loadSelectOptions (controlKey: string, requestParams: { [viewId: string]: IDistinctValueReqeustParams }, itemId?: number) {
+  loadSelectOptions (
+    controlKey: string,
+    requestParams: { [viewId: string]: IDistinctValueReqeustParams },
+    itemId?: number
+  ) {
     return {
       type: ActionTypes.LOAD_SELECT_OPTIONS,
       payload: {
         controlKey,
         requestParams,
-        itemId
+        itemId,
+        cancelTokenSource: CancelToken.source()
       }
     }
   },
-  selectOptionsLoaded (controlKey: string, values: any[], itemId?: number) {
+  selectOptionsLoaded (
+    controlKey: string,
+    values: object[],
+    itemId?: number
+  ) {
     return {
       type: ActionTypes.LOAD_SELECT_OPTIONS_SUCCESS,
       payload: {
@@ -308,13 +374,19 @@ export const ViewActions = {
     }
   },
 
-  loadViewData (id: number, requestParams: IDataRequestParams, resolve: (data: any[]) => void) {
+  loadViewData (
+    id: number,
+    requestParams: IDataRequestBody,
+    resolve: (data: any[]) => void,
+    reject: (error) => void
+  ) {
     return {
       type: ActionTypes.LOAD_VIEW_DATA,
       payload: {
         id,
         requestParams,
-        resolve
+        resolve,
+        reject
       }
     }
   },
@@ -332,39 +404,28 @@ export const ViewActions = {
     }
   },
 
-  loadViewDistinctValue (viewId: number, params: IDistinctValueReqeustParams, resolve?: any) {
+  loadColumnDistinctValue(
+    paramsByViewId: {
+      [viewId: string]: Omit<IDistinctValueReqeustParams, 'cache' | 'expired'>
+    },
+    callback: (options?: object[]) => void
+  ) {
     return {
-      type: ActionTypes.LOAD_VIEW_DISTINCT_VALUE,
+      type: ActionTypes.LOAD_COLUMN_DISTINCT_VALUE,
       payload: {
-        viewId,
-        params,
-        resolve
-      }
-    }
-  },
-  viewDistinctValueLoaded (data: any[]) {
-    return {
-      type: ActionTypes.LOAD_VIEW_DISTINCT_VALUE_SUCCESS,
-      payload: {
-        data
-      }
-    }
-  },
-  loadViewDistinctValueFail (err) {
-    return {
-      type: ActionTypes.LOAD_VIEW_DISTINCT_VALUE_FAILURE,
-      payload: {
-        err
+        paramsByViewId,
+        callback
       }
     }
   },
 
   loadViewDataFromVizItem (
     renderType: RenderType,
-    itemId: number,
+    itemId: number | [number, number],
     viewId: number,
-    requestParams: IDataRequestParams,
-    vizType: 'dashboard' | 'display'
+    requestParams: any,
+    vizType: 'dashboard' | 'display',
+    statistic
   ) {
     return {
       type: ActionTypes.LOAD_VIEW_DATA_FROM_VIZ_ITEM,
@@ -373,16 +434,19 @@ export const ViewActions = {
         itemId,
         viewId,
         requestParams,
-        vizType
-      }
+        vizType,
+        cancelTokenSource: CancelToken.source()
+      },
+      statistic
     }
   },
   viewDataFromVizItemLoaded (
     renderType: RenderType,
-    itemId: number,
-    requestParams: IDataRequestParams,
-    result: any[],
-    vizType: 'dashboard' | 'display'
+    itemId: number | [number, number],
+    requestParams: any,
+    result: IViewQueryResponse,
+    vizType: 'dashboard' | 'display',
+    statistic
   ) {
     return {
       type: ActionTypes.LOAD_VIEW_DATA_FROM_VIZ_ITEM_SUCCESS,
@@ -392,15 +456,21 @@ export const ViewActions = {
         requestParams,
         result,
         vizType
-      }
+      },
+      statistic
     }
   },
-  loadViewDataFromVizItemFail (itemId: number, vizType: 'dashboard' | 'display') {
+  loadViewDataFromVizItemFail (
+    itemId: number | [number, number],
+    vizType: 'dashboard' | 'display',
+    errorMessage: string
+  ) {
     return {
       type: ActionTypes.LOAD_VIEW_DATA_FROM_VIZ_ITEM_FAILURE,
       payload: {
         itemId,
-        vizType
+        vizType,
+        errorMessage
       }
     }
   }

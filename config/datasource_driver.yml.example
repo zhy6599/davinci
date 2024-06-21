@@ -40,13 +40,14 @@
 ##     2. add the corresponding dependency file (jar) in lib package,
 ##     3. restart your Davinci server
 ##  In theory, all databases with jdbc drivers are supported,
-##  if you have problems during useing, please with contact us.
+##  if you have problems during using, please with contact us.
 
 ## Configuration is as follows:
 
 # mysql:
 #   name: mysql
 #   desc: mysql
+#   version:
 #   driver: com.mysql.jdbc.Driver
 #   keyword_prefix: \`
 #   keyword_suffix: \`
@@ -56,6 +57,7 @@
 # oracle:
 #   name: oracle
 #   desc: oracle
+#   version: 
 #   driver: oracle.jdbc.driver.OracleDriver
 #   keyword_prefix: \"
 #   keyword_suffix: \"

@@ -23,9 +23,11 @@ import com.alibaba.druid.util.StringUtils;
 import edp.core.annotation.AuthIgnore;
 import edp.core.annotation.CurrentUser;
 import edp.core.enums.HttpCodeEnum;
+import edp.core.exception.ServerException;
 import edp.davinci.common.controller.BaseController;
 import edp.davinci.core.common.Constants;
 import edp.davinci.core.common.ResultMap;
+import edp.davinci.core.enums.UserDistinctType;
 import edp.davinci.dto.userDto.*;
 import edp.davinci.model.User;
 import edp.davinci.service.UserService;
@@ -106,35 +108,6 @@ public class UserController extends BaseController {
             return ResponseEntity.status(HttpCodeEnum.SERVER_ERROR.getCode()).body(HttpCodeEnum.SERVER_ERROR.getMessage());
         }
     }
-
-//    /**
-//     * 用户激活
-//     *
-//     * @param token
-//     * @param user
-//     * @param request
-//     * @return
-//     */
-//    @ApiOperation(value = "active user")
-//    @PostMapping(value = "/user/active/{token:.*}")
-//    public ResponseEntity activate(@PathVariable String token,
-//                              @ApiIgnore @CurrentUser User user,
-//                              HttpServletRequest request) {
-//
-//        if (StringUtils.isEmpty(token)) {
-//            ResultMap resultMap = new ResultMap(tokenUtils).failAndRefreshToken(request).message("The activate token can not be EMPTY");
-//            return ResponseEntity.status(resultMap.getCode()).body(resultMap);
-//        }
-//
-//        try {
-//            ResultMap resultMap = userService.activateUser(user, token, request);
-//            return ResponseEntity.status(resultMap.getCode()).body(resultMap);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            log.error(e.getMessage());
-//            return ResponseEntity.status(HttpCodeEnum.SERVER_ERROR.getCode()).body(HttpCodeEnum.SERVER_ERROR.getMessage());
-//        }
-//    }
 
     /**
      * 重发邮件
@@ -282,6 +255,7 @@ public class UserController extends BaseController {
     @ApiOperation(value = "get users by keyword")
     @GetMapping
     public ResponseEntity getUsers(@RequestParam("keyword") String keyword,
+                                   @RequestParam(name = "includeSelf", required = false, defaultValue = "false") Boolean includeSelf,
                                    @RequestParam(value = "orgId", required = false) Long orgId,
                                    @ApiIgnore @CurrentUser User user,
                                    HttpServletRequest request) {
@@ -289,7 +263,7 @@ public class UserController extends BaseController {
             ResultMap resultMap = new ResultMap(tokenUtils).failAndRefreshToken(request).message("keyword can not EMPTY");
             return ResponseEntity.status(resultMap.getCode()).body(resultMap);
         }
-        List<UserBaseInfo> users = userService.getUsersByKeyword(keyword, user, orgId);
+        List<UserBaseInfo> users = userService.getUsersByKeyword(keyword, user, orgId, includeSelf);
         return ResponseEntity.ok(new ResultMap(tokenUtils).successAndRefreshToken(request).payloads(users));
     }
 
@@ -318,4 +292,45 @@ public class UserController extends BaseController {
             return ResponseEntity.status(HttpCodeEnum.SERVER_ERROR.getCode()).body(HttpCodeEnum.SERVER_ERROR.getMessage());
         }
     }
+
+
+    /**
+     * 校验登录用户
+     *
+     * @param token
+     * @return
+     */
+    @ApiOperation(value = "get user profile from token")
+    @AuthIgnore
+    @GetMapping("/check/{token:.*}")
+    public ResponseEntity getUserFromToken(@PathVariable String token) {
+
+        ResultMap resultMap = userService.getUserProfileFromToken(token);
+        return ResponseEntity.status(resultMap.getCode()).body(resultMap);
+    }
+
+    @ApiOperation(value = "forget password", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @AuthIgnore
+    @PostMapping(value = "/forget/password/{type}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ResultMap> forgetPassword(@PathVariable String type,
+                                                    @RequestBody UserDistinctTicket ticket) {
+
+        String token = userService.forgetPassword(UserDistinctType.typeOf(type), ticket);
+        return ResponseEntity.ok(new ResultMap().success().payload(token));
+    }
+
+    @ApiOperation(value = "reset password", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @AuthIgnore
+    @PostMapping(value = "/reset/password/{type}/{token}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ResultMap> resetPassword(@PathVariable(name = "type") String type,
+                                                   @PathVariable(name = "token") String token,
+                                                   @RequestBody UserDistinctTicket ticket) {
+        boolean res = userService.resetPassword(UserDistinctType.typeOf(type), token, ticket);
+        if (res) {
+            return ResponseEntity.ok(new ResultMap().success());
+        } else {
+            throw new ServerException("reset password fail");
+        }
+    }
+
 }

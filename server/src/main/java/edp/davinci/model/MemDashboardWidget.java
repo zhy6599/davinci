@@ -19,7 +19,7 @@
 
 package edp.davinci.model;
 
-import edp.davinci.common.model.RecordInfo;
+import edp.core.model.RecordInfo;
 import lombok.Data;
 
 import javax.validation.constraints.Min;
@@ -29,6 +29,8 @@ public class MemDashboardWidget extends RecordInfo<MemDashboardWidget> {
 
     @Min(value = 1L, message = "Invalid id")
     private Long id;
+
+    private String alias;
 
     @Min(value = 1L, message = "Invalid dashboard id")
     private Long dashboardId;

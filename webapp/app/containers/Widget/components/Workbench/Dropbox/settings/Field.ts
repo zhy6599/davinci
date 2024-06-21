@@ -1,10 +1,13 @@
-import { SettingTypes, ItemTypes, ISettingItem } from './type'
+import { SettingTypes, ItemTypes, ISettingItem } from './types'
 
 const Field: ISettingItem = {
   key: 'field',
   name: '字段设置',
-  settingType: SettingTypes.Dimension | SettingTypes.Indicator,
-  itemType: ItemTypes.Category | ItemTypes.Value,
+  constrants: [{
+    settingType: SettingTypes.Dimension | SettingTypes.Indicator | SettingTypes.Color | SettingTypes.Tip,
+    itemType: ItemTypes.Category | ItemTypes.Value,
+    itemValueType: null
+  }],
   sub: false,
   items: [{
     field: '字段设置'
